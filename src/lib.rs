@@ -7,12 +7,12 @@ pub type Entity = Index;
 
 pub trait Component: 'static {}
 
-pub struct SpareSet<C> {
+pub struct SparseSet<C> {
     sparse: BiMap<Entity, usize>,
     dense: Vec<C>
 }
 
-impl<C> SpareSet<C> {
+impl<C> SparseSet<C> {
     fn new(entity: Entity, component: C) -> Self {
         let mut sparse = BiMap::new();
         sparse.insert(entity, 0);
@@ -61,41 +61,36 @@ impl<C> SpareSet<C> {
 #[derive(Default)]
 pub struct World {
     entities: Arena<()>,
-    sparesets: HashMap<TypeId, RefCell<Box<dyn Any>>>
+    sparse_sets: HashMap<TypeId, RefCell<Box<dyn Any>>>
 }
 
 impl World {
-    fn get_sparseset<C: Component>(&self) -> Option<Ref<SpareSet<C>>> {
-        self.sparesets.get(&TypeId::of::<C>())
+    fn get_sparse_set<C: Component>(&self) -> Option<Ref<SparseSet<C>>> {
+        self.sparse_sets.get(&TypeId::of::<C>())
             .map(|set| {
                 Ref::map(set.borrow(), |s| s.downcast_ref().unwrap())
             })
     }
-    
 
-    fn get_sparseset_mut<C: Component>(&mut self) -> Option<RefMut<SpareSet<C>>> {
-        self.sparesets.get_mut(&TypeId::of::<C>())
+    fn get_sparse_set_mut<C: Component>(&self) -> Option<RefMut<SparseSet<C>>> {
+        self.sparse_sets.get(&TypeId::of::<C>())
             .map(|set| {
                 RefMut::map(set.borrow_mut(), |s| s.downcast_mut().unwrap())
             })
-    }    
+    }
 
     pub fn spawn(&mut self) -> Entity { self.entities.insert(()) }
 
     pub fn attach<C: Component>(&mut self, entity: Entity, component: C) {
-        self.sparesets.insert(TypeId::of::<C>(), RefCell::new(Box::new(SpareSet::new(entity, component))));
+        self.sparse_sets.insert(TypeId::of::<C>(), RefCell::new(Box::new(SparseSet::new(entity, component))));
     }
 
-    pub fn detach<C: Component>(&mut self, entity: Entity) {
-        self.get_sparseset_mut::<C>().map(|mut set| set.remove(entity));
+    pub fn detach<C: Component>(&self, entity: Entity) {
+        self.get_sparse_set_mut::<C>().map(|mut set| set.remove(entity));
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (Entity, Q)> + 'a {
         Q::get_components(self).unwrap()
-    }
-    
-    pub fn query_mut<'a, Q: QueryMut<'a>>(&'a mut self) -> impl Iterator<Item = (Entity, Q)> + 'a {
-        Q::get_components_mut(self).unwrap()
     }
 }
 
@@ -103,30 +98,26 @@ pub trait Query<'a> {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a>; 
 }
 
-pub trait QueryMut<'a> {
-    fn get_components_mut(world: &'a mut World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a>;
-}
-
 impl<'a, C: Component> Query<'a> for (&'a C,) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        world.get_sparseset::<C>().map(|set| {
-            set.iter().map(|(entity, component)| (entity, (component,)))
+        world.get_sparse_set::<C>().and_then(|set| {
+            Some(set.iter().map(|(entity, component)| (entity, (component,))))
         })
     }
 }
 
-impl<'a, C: Component> QueryMut<'a> for (&'a mut C,) {
-    fn get_components_mut(world: &'a mut World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        world.get_sparseset_mut::<C>().map(|mut set| {
-            set.iter_mut().map(|(entity, component)| (entity, (component,)))
+impl<'a, C: Component> Query<'a> for (&'a mut C,) {
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
+        world.get_sparse_set_mut::<C>().and_then(|mut set| {
+            Some(set.iter_mut().map(|(entity, component)| (entity, (component,))))
         })
     }
 }
 
 impl<'a, C1: Component, C2: Component> Query<'a> for (&'a C1, &'a C2) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        let s1 = world.get_sparseset::<C1>()?;
-        let s2 = world.get_sparseset::<C2>()?;
+        let s1 = world.get_sparse_set::<C1>()?;
+        let s2 = world.get_sparse_set::<C2>()?;
 
         Some(s1.iter().filter_map(|(entity, c1)| {
             s2.sparse.get_by_left(&entity).map(|_| {
