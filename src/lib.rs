@@ -1,4 +1,4 @@
-use std::{any::{Any, TypeId}, cell::{Ref, RefCell, RefMut}, collections::HashMap};
+use std::{any::{Any, TypeId}, cell::RefCell, collections::HashMap};
 
 use bimap::BiMap; 
 use thunderdome::{Arena, Index};
@@ -65,28 +65,30 @@ pub struct World {
 }
 
 impl World {
-    fn get_sparse_set<C: Component>(&self) -> Option<Ref<SparseSet<C>>> {
-        self.sparse_sets.get(&TypeId::of::<C>())
-            .map(|set| {
-                Ref::map(set.borrow(), |s| s.downcast_ref().unwrap())
-            })
-    }
+    fn get_sparse_set<C: Component>(&self) -> Option<&SparseSet<C>> {
+        self.sparse_sets.get(&TypeId::of::<C>()).and_then(|set| unsafe {
+            (set.borrow().as_ref() as *const dyn Any).cast::<SparseSet<C>>().as_ref()
+        })
+    }    
 
-    fn get_sparse_set_mut<C: Component>(&self) -> Option<RefMut<SparseSet<C>>> {
-        self.sparse_sets.get(&TypeId::of::<C>())
-            .map(|set| {
-                RefMut::map(set.borrow_mut(), |s| s.downcast_mut().unwrap())
-            })
+    fn get_sparse_set_mut<C: Component>(&self) -> Option<&mut SparseSet<C>> {
+        self.sparse_sets.get(&std::any::TypeId::of::<C>()).and_then(|set| unsafe {
+            (set.borrow_mut().as_mut() as *mut dyn Any).cast::<SparseSet<C>>().as_mut()
+        })
     }
 
     pub fn spawn(&mut self) -> Entity { self.entities.insert(()) }
 
     pub fn attach<C: Component>(&mut self, entity: Entity, component: C) {
-        self.sparse_sets.insert(TypeId::of::<C>(), RefCell::new(Box::new(SparseSet::new(entity, component))));
+        if let Some(set) = self.get_sparse_set_mut::<C>() {
+            set.insert(entity, component);
+        } else {
+            self.sparse_sets.insert(TypeId::of::<C>(), RefCell::new(Box::new(SparseSet::new(entity, component))));
+        }
     }
 
-    pub fn detach<C: Component>(&self, entity: Entity) {
-        self.get_sparse_set_mut::<C>().map(|mut set| set.remove(entity));
+    pub fn detach<C: Component>(&mut self, entity: Entity) {
+        self.get_sparse_set_mut::<C>().map(|set| set.remove(entity));
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (Entity, Q)> + 'a {
@@ -108,7 +110,7 @@ impl<'a, C: Component> Query<'a> for (&'a C,) {
 
 impl<'a, C: Component> Query<'a> for (&'a mut C,) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        world.get_sparse_set_mut::<C>().and_then(|mut set| {
+        world.get_sparse_set_mut::<C>().and_then(|set| {
             Some(set.iter_mut().map(|(entity, component)| (entity, (component,))))
         })
     }
