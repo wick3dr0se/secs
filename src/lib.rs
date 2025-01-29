@@ -72,7 +72,7 @@ impl World {
     }    
 
     fn get_sparse_set_mut<C: Component>(&self) -> Option<&mut SparseSet<C>> {
-        self.sparse_sets.get(&std::any::TypeId::of::<C>()).and_then(|set| unsafe {
+        self.sparse_sets.get(&TypeId::of::<C>()).and_then(|set| unsafe {
             (set.borrow_mut().as_mut() as *mut dyn Any).cast::<SparseSet<C>>().as_mut()
         })
     }
@@ -92,7 +92,7 @@ impl World {
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (Entity, Q)> + 'a {
-        Q::get_components(self).unwrap()
+        Q::get_components(self).expect("Component not found. Was it attached to this entity?")
     }
 }
 
@@ -108,14 +108,6 @@ impl<'a, C: Component> Query<'a> for (&'a C,) {
     }
 }
 
-impl<'a, C: Component> Query<'a> for (&'a mut C,) {
-    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        world.get_sparse_set_mut::<C>().and_then(|set| {
-            Some(set.iter_mut().map(|(entity, component)| (entity, (component,))))
-        })
-    }
-}
-
 impl<'a, C1: Component, C2: Component> Query<'a> for (&'a C1, &'a C2) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
         let s1 = world.get_sparse_set::<C1>()?;
@@ -127,6 +119,59 @@ impl<'a, C1: Component, C2: Component> Query<'a> for (&'a C1, &'a C2) {
                 
                 (entity, (c1, c2))
             })
+        }))
+    }
+}
+
+impl<'a, C: Component> Query<'a> for (&'a mut C,) {
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
+        world.get_sparse_set_mut::<C>().and_then(|set| {
+            Some(set.iter_mut().map(|(entity, component)| (entity, (component,))))
+        })
+    }
+}
+
+impl<'a, C1: Component, C2: Component> Query<'a> for (&'a mut C1, &'a mut C2) {
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
+        let s1 = world.get_sparse_set_mut::<C1>()?;
+        let s2 = world.get_sparse_set_mut::<C2>()?;
+        let dense1 = s1.dense.as_mut_ptr();
+        let dense2 = s2.dense.as_mut_ptr();
+
+        Some(s1.sparse.iter().filter_map(move |(&entity, &idx1)| {
+            let idx2 = s2.sparse.get_by_left(&entity)?;
+
+            Some((entity, unsafe {
+                (&mut *dense1.add(idx1), &mut *dense2.add(*idx2))
+            }))
+        }))
+    }
+}
+
+impl<'a, C1: Component, C2: Component> Query<'a> for (&'a C1, &'a mut C2) {
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
+        let s1 = world.get_sparse_set::<C1>()?;
+        let s2 = world.get_sparse_set_mut::<C2>()?;
+        let dense2 = s2.dense.as_mut_ptr();
+
+        Some(s1.iter().filter_map(move |(entity, c1)| {
+            let idx2 = s2.sparse.get_by_left(&entity)?;
+            
+            Some((entity, (c1, unsafe { &mut *dense2.add(*idx2) })))
+        }))
+    }
+}
+
+impl<'a, C1: Component, C2: Component> Query<'a> for (&'a mut C1, &'a C2) {
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
+        let s1 = world.get_sparse_set_mut::<C1>()?;
+        let s2 = world.get_sparse_set::<C2>()?;
+        let dense1 = s1.dense.as_mut_ptr();
+
+        Some(s2.iter().filter_map(move |(entity, c2)| {
+            let idx1 = s1.sparse.get_by_left(&entity)?;
+            
+            Some((entity, (unsafe { &mut *dense1.add(*idx1) }, c2)))
         }))
     }
 }
