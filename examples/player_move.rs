@@ -1,4 +1,4 @@
-use secs::{World, Component};
+use secs::World;
 
 struct Position {
     x: i32,
@@ -9,9 +9,6 @@ struct Velocity {
     x: i32,
     y: i32
 }
-
-impl Component for Position {}
-impl Component for Velocity {}
 
 fn main() {
     let mut world = World::default();
