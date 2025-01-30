@@ -2,7 +2,7 @@ use std::{any::{Any, TypeId}, collections::HashMap, sync::RwLock};
 
 use thunderdome::{Arena, Index};
 
-use crate::{query::Query, scheduler::{Scheduler, System}, sparse_set::SparseSet};
+use crate::{query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::SparseSet};
 
 pub type Entity = Index;
 
@@ -50,15 +50,11 @@ impl World {
         Q::get_components(self).into_iter().flatten()
     }
 
-    pub fn add_system(&mut self, system: System) {
-        self.scheduler.register(system);
+    pub fn add_system(&mut self, system: System, mode: ExecutionMode) {
+        self.scheduler.register(system, mode);
     }
 
     pub fn run_systems(&self) {
         self.scheduler.run(self);
-    }
-
-    pub fn run_systems_par(&self) {
-        self.scheduler.run_par(self);
     }
 }
