@@ -5,4 +5,5 @@ edition = "2021"
 
 [dependencies]
 bimap = "0.6.3"
+rayon = "1.10.0"
 thunderdome = "0.6.1"
