@@ -12,7 +12,7 @@ You could use something like **hecs**, **specs** or **bevy** for your ECS needs,
 - **Entity Management**: Entities are ID's, right?
 - **Component Storage**: Components are stored in sparse sets — sounds fancy but archetypes were too much work
 - **Multiple Mutable Queries**: You can mutate many components, probably..
-- **Systems**: Right now, **secs** doesn’t have systems but eventually if shit works out, it might
+- **Systems**: **secs** has systems with parallel potential
 
 ## Getting Started
 Get **secs**
@@ -26,9 +26,7 @@ Example: How it’s probably supposed to work
 use secs::World;
 
 let mut world = World::default();
-let entity = world.spawn();
-
-world.attach(entity, MyComponent { /* your data */ });
+world.spawn((MyComponent { /* your data */ },));
 
 for (entity, (component,)) in world.query::<(&MyComponent,)>() {
     // maybe get an immutable component
