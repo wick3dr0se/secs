@@ -12,7 +12,9 @@ struct Velocity {
 }
 
 struct Sprite {
-    shape: Shape
+    shape: Shape,
+    width: f32,
+    height: f32
 }
 
 struct Powerup {
@@ -52,17 +54,26 @@ fn move_system(world: &World) {
 }
 
 fn collision_system(world: &World) {
-    for (_entity, (player_pos, player_sprite, player_score)) in world.query::<(&Position, &mut Sprite, &mut Score)>() {
-        for (_entity, (powerup_pos, powerup)) in world.query::<(&Position, &mut Powerup)>() {
-            if powerup.active && (powerup_pos.x - player_pos.x).abs() < 20. && (powerup_pos.y - player_pos.y).abs() < 20. {
+    for (_, (player_pos, player_spr, player_score)) in
+        world.query::<(&Position, &mut Sprite, &mut Score)>()
+    {
+        for (_, (powerup_pos, powerup)) in
+            world.query::<(&Position, &mut Powerup)>()
+        {
+            if powerup.active
+                && (powerup_pos.x - player_pos.x).abs() < player_spr.width
+                && (powerup_pos.y - player_pos.y).abs() < player_spr.height
+            {
                 powerup.active = false;
 
-                player_sprite.shape = match player_sprite.shape {
+                player_spr.shape = match player_spr.shape {
                     Shape::Square => Shape::Circle,
-                    Shape::Circle => Shape::Square,
+                    Shape::Circle => Shape::Square
                 };
 
-                player_score.value += 1;                
+                player_score.value += 1;
+                player_spr.width += 3.;
+                player_spr.height += 3.;
             }
         }
     }
@@ -71,14 +82,19 @@ fn collision_system(world: &World) {
 fn render_system(world: &World) {
     for (_, (pos, sprite)) in world.query::<(&Position, &Sprite)>() {
         match sprite.shape {
-            Shape::Square => draw_rectangle(pos.x, pos.y, 20., 20., ORANGE),
-            Shape::Circle => draw_circle(pos.x + 10., pos.y + 10., 10., PURPLE),
+            Shape::Square => draw_rectangle(
+                pos.x, pos.y, sprite.width, sprite.height, ORANGE
+            ),
+            Shape::Circle => draw_circle(
+                pos.x + sprite.width / 2., pos.y + sprite.height / 2.,
+                sprite.width / 2., PURPLE
+            )
         }
     }
 
     for (_, (powerup, pos)) in world.query::<(&Powerup, &Position)>() {
         if powerup.active {
-            draw_rectangle(pos.x, pos.y, 10., 10., RED);
+            draw_rectangle(pos.x, pos.y, 15., 15., RED);
         }
     }
 
@@ -91,19 +107,18 @@ fn render_system(world: &World) {
 async fn main() {
     let mut world = World::default();
 
-    let player = world.spawn();
-    world.attach(player, Position { x: 100., y: 100. });
-    world.attach(player, Velocity { x: 0., y: 0. });
-    world.attach(player, Sprite { shape: Shape::Square });
-    world.attach(player, Score { value: 0 });
+    world.spawn((
+        Position { x: 100., y: 100. },
+        Velocity { x: 0., y: 0. },
+        Sprite { shape: Shape::Circle, width: 20., height: 20. },
+        Score { value: 0 }
+    ));
 
-    for _ in 0..25 {
-        let powerup = world.spawn();
+    for _ in 0..50 {
         let x = rand::gen_range(0., screen_width());
         let y = rand::gen_range(0., screen_height());
 
-        world.attach(powerup, Position { x, y });
-        world.attach(powerup, Powerup { active: true });
+        world.spawn((Powerup { active: true }, Position { x, y }));
     }
 
     // macroquad is single threaded so any systems executng it's code cannot be run in parallel
