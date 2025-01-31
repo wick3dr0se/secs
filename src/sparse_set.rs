@@ -1,3 +1,5 @@
+use std::{any::{Any, TypeId}, collections::HashMap, sync::RwLock};
+
 use bimap::BiMap;
 
 use crate::world::Entity;
@@ -50,6 +52,35 @@ impl<C> SparseSet<C> {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (Entity, &mut C)> {
         self.dense.iter_mut().enumerate().map(|(idx, component)| {
             (*self.sparse.get_by_right(&idx).unwrap(), component)
+        })
+    }
+}
+
+#[derive(Default)]
+pub struct SparseSets {
+    sets: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>
+}
+
+impl SparseSets {
+    pub fn insert<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
+        self.sets.insert(TypeId::of::<C>(), RwLock::new(Box::new(SparseSet::new(entity, component))));
+    }
+
+    pub fn get<C: 'static>(&self) -> Option<&SparseSet<C>> {
+        self.sets.get(&TypeId::of::<C>()).and_then(|set| {
+            let guard = set.read().unwrap();
+
+            unsafe { (guard.as_ref() as *const dyn Any).cast::<SparseSet<C>>().as_ref() }
+        })
+    }
+
+    pub fn get_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>> {
+        self.sets.get(&TypeId::of::<C>()).and_then(|set| {
+            let mut guard = set.write().unwrap();
+
+            unsafe {
+                (guard.as_mut() as *mut dyn Any).cast::<SparseSet<C>>().as_mut()
+            }
         })
     }
 }

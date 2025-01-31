@@ -1,4 +1,4 @@
-use crate::world::{Entity, World};
+use crate::world::{Entity, World, WorldQuery};
 
 pub trait Query<'a> {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a>; 

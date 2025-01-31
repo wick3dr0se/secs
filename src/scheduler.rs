@@ -6,7 +6,6 @@ pub type System = fn(&World);
 
 #[derive(PartialEq)]
 pub enum ExecutionMode {
-    Manual,
     Parallel,
     Serial
 }

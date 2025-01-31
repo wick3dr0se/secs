@@ -1,49 +1,96 @@
-use std::{any::{Any, TypeId}, collections::HashMap, sync::RwLock};
-
 use thunderdome::{Arena, Index};
 
-use crate::{query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::SparseSet};
+use crate::{query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::{SparseSet, SparseSets}};
 
 pub type Entity = Index;
+
+pub trait AttachComponents {
+    fn attach_to_entity(self, world: &mut World, entity: Entity);
+}
+
+impl<C1: 'static + Send + Sync> AttachComponents for (C1,) {
+    fn attach_to_entity(self, world: &mut World, entity: Entity) {
+        world.attach_component(entity, self.0);
+    }
+}
+
+impl<C1: 'static + Send + Sync, C2: 'static + Send + Sync> AttachComponents for (C1, C2) {
+    fn attach_to_entity(self, world: &mut World, entity: Entity) {
+        world.attach_component(entity, self.0);
+        world.attach_component(entity, self.1);
+    }
+}
+
+impl<
+    C1: 'static + Send + Sync,
+    C2: 'static + Send + Sync,
+    C3: 'static + Send + Sync
+> AttachComponents for (C1, C2, C3) {
+    fn attach_to_entity(self, world: &mut World, entity: Entity) {
+        world.attach_component(entity, self.0);
+        world.attach_component(entity, self.1);
+        world.attach_component(entity, self.2);
+    }
+}
+
+impl<
+    C1: 'static + Send + Sync,
+    C2: 'static + Send + Sync,
+    C3: 'static + Send + Sync,
+    C4: 'static + Send + Sync
+> AttachComponents for (C1, C2, C3, C4) {
+    fn attach_to_entity(self, world: &mut World, entity: Entity) {
+        world.attach_component(entity, self.0);
+        world.attach_component(entity, self.1);
+        world.attach_component(entity, self.2);
+        world.attach_component(entity, self.3);
+    }
+}
+
+impl<
+    C1: 'static + Send + Sync,
+    C2: 'static + Send + Sync,
+    C3: 'static + Send + Sync,
+    C4: 'static + Send + Sync,
+    C5: 'static + Send + Sync
+> AttachComponents for (C1, C2, C3, C4, C5) {
+    fn attach_to_entity(self, world: &mut World, entity: Entity) {
+        world.attach_component(entity, self.0);
+        world.attach_component(entity, self.1);
+        world.attach_component(entity, self.2);
+        world.attach_component(entity, self.3);
+        world.attach_component(entity, self.4);
+    }
+}
 
 #[derive(Default)]
 pub struct World {
     entities: Arena<()>,
-    sparse_sets: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
+    sparse_sets: SparseSets,
     scheduler: Scheduler
 }
 
 impl World {
-    pub fn get_sparse_set<C: 'static>(&self) -> Option<&SparseSet<C>> {
-        self.sparse_sets.get(&TypeId::of::<C>()).and_then(|set| {
-            let guard = set.read().unwrap();
-
-            unsafe { (guard.as_ref() as *const dyn Any).cast::<SparseSet<C>>().as_ref() }
-        })
-    }
-
-    pub fn get_sparse_set_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>> {
-        self.sparse_sets.get(&TypeId::of::<C>()).and_then(|set| {
-            let mut guard = set.write().unwrap();
-
-            unsafe {
-                (guard.as_mut() as *mut dyn Any).cast::<SparseSet<C>>().as_mut()
-            }
-        })
-    }
-
-    pub fn spawn(&mut self) -> Entity { self.entities.insert(()) }
-
-    pub fn attach<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
-        if let Some(set) = self.get_sparse_set_mut::<C>() {
+    fn attach_component<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
+        if let Some(set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
-            self.sparse_sets.insert(TypeId::of::<C>(), RwLock::new(Box::new(SparseSet::new(entity, component))));
+            self.sparse_sets.insert(entity, component);
         }
     }
 
+    pub fn spawn<C: AttachComponents>(&mut self, components: C) -> Entity {
+        let entity = self.entities.insert(());
+        components.attach_to_entity(self, entity);
+        entity
+    }
+
+    pub fn attach<C: AttachComponents>(&mut self, entity: Entity, components: C) {
+        components.attach_to_entity(self, entity);
+    }
+
     pub fn detach<C: 'static>(&mut self, entity: Entity) {
-        self.get_sparse_set_mut::<C>().map(|set| set.remove(entity));
+        self.sparse_sets.get_mut::<C>().map(|set| set.remove(entity));
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (thunderdome::Index, Q)> + 'a {
@@ -56,5 +103,20 @@ impl World {
 
     pub fn run_systems(&self) {
         self.scheduler.run(self);
+    }
+}
+
+pub trait WorldQuery {
+    fn get_sparse_set<C: 'static>(&self) -> Option<&SparseSet<C>>;
+    fn get_sparse_set_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>>;
+}
+
+impl WorldQuery for World {
+    fn get_sparse_set<C: 'static>(&self) -> Option<&SparseSet<C>> {
+        self.sparse_sets.get::<C>()
+    }
+
+    fn get_sparse_set_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>> {
+        self.sparse_sets.get_mut::<C>()
     }
 }
