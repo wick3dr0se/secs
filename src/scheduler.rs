@@ -16,11 +16,20 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub fn register(&mut self, system: System, mode: ExecutionMode) {
+    pub(crate) fn register(&mut self, system: System, mode: ExecutionMode) {
         self.systems.push((system, mode));
     }
 
-    pub fn run(&self, world: &World) {
+    pub(crate) fn deregister(&mut self, system: System) {
+        if let Some(pos) = self.systems
+            .iter()
+            .position(|(s, _)| s as *const _ == system as *const _)
+        {
+            self.systems.remove(pos);
+        }
+    }
+
+    pub(crate) fn run(&self, world: &World) {
         self.systems.par_iter()
         .filter(|(_, mode)| *mode == ExecutionMode::Parallel)
         .for_each(|(sys, _)| sys(world));

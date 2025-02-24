@@ -1,77 +1,21 @@
+use std::{any::{Any, TypeId}, collections::HashMap};
+
 use thunderdome::{Arena, Index};
 
-use crate::{query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::{SparseSet, SparseSets}};
+use crate::{components::AttachComponents, query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::{SparseSet, SparseSets}};
 
 pub type Entity = Index;
-
-pub trait AttachComponents {
-    fn attach_to_entity(self, world: &mut World, entity: Entity);
-}
-
-impl<C1: 'static + Send + Sync> AttachComponents for (C1,) {
-    fn attach_to_entity(self, world: &mut World, entity: Entity) {
-        world.attach_component(entity, self.0);
-    }
-}
-
-impl<C1: 'static + Send + Sync, C2: 'static + Send + Sync> AttachComponents for (C1, C2) {
-    fn attach_to_entity(self, world: &mut World, entity: Entity) {
-        world.attach_component(entity, self.0);
-        world.attach_component(entity, self.1);
-    }
-}
-
-impl<
-    C1: 'static + Send + Sync,
-    C2: 'static + Send + Sync,
-    C3: 'static + Send + Sync
-> AttachComponents for (C1, C2, C3) {
-    fn attach_to_entity(self, world: &mut World, entity: Entity) {
-        world.attach_component(entity, self.0);
-        world.attach_component(entity, self.1);
-        world.attach_component(entity, self.2);
-    }
-}
-
-impl<
-    C1: 'static + Send + Sync,
-    C2: 'static + Send + Sync,
-    C3: 'static + Send + Sync,
-    C4: 'static + Send + Sync
-> AttachComponents for (C1, C2, C3, C4) {
-    fn attach_to_entity(self, world: &mut World, entity: Entity) {
-        world.attach_component(entity, self.0);
-        world.attach_component(entity, self.1);
-        world.attach_component(entity, self.2);
-        world.attach_component(entity, self.3);
-    }
-}
-
-impl<
-    C1: 'static + Send + Sync,
-    C2: 'static + Send + Sync,
-    C3: 'static + Send + Sync,
-    C4: 'static + Send + Sync,
-    C5: 'static + Send + Sync
-> AttachComponents for (C1, C2, C3, C4, C5) {
-    fn attach_to_entity(self, world: &mut World, entity: Entity) {
-        world.attach_component(entity, self.0);
-        world.attach_component(entity, self.1);
-        world.attach_component(entity, self.2);
-        world.attach_component(entity, self.3);
-        world.attach_component(entity, self.4);
-    }
-}
 
 #[derive(Default)]
 pub struct World {
     entities: Arena<()>,
     sparse_sets: SparseSets,
-    scheduler: Scheduler
+    scheduler: Scheduler,
+    resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>
 }
 
 impl World {
-    fn attach_component<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
+    pub(crate) fn attach_component<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
         if let Some(set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
@@ -97,8 +41,28 @@ impl World {
         Q::get_components(self).into_iter().flatten()
     }
 
+    pub fn add_resource<R: 'static + Send + Sync>(&mut self, res: R) {
+        self.resources.insert(TypeId::of::<R>(), Box::new(res));
+    }
+
+    pub fn get_resource<R: 'static>(&self) -> Option<&R> {
+        self.resources.get(&TypeId::of::<R>()).and_then(|r| r.downcast_ref())
+    }
+
+    pub fn get_resource_mut<R: 'static>(&mut self) -> Option<&mut R> {
+        self.resources.get_mut(&TypeId::of::<R>()).and_then(|r| r.downcast_mut())
+    }
+
+    pub fn remove_resource<R: 'static>(&mut self) {
+        self.resources.remove(&TypeId::of::<R>());
+    }
+
     pub fn add_system(&mut self, system: System, mode: ExecutionMode) {
         self.scheduler.register(system, mode);
+    }
+
+    pub fn remove_system(&mut self, system: System) {
+        self.scheduler.deregister(system);
     }
 
     pub fn run_systems(&self) {

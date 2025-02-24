@@ -1,6 +1,10 @@
 use macroquad::{prelude::*, rand, ui::root_ui};
 use secs::prelude::{ExecutionMode, World};
 
+struct GameState {
+    paused: bool
+}
+
 struct Position {
     x: f32,
     y: f32
@@ -31,6 +35,12 @@ enum Shape {
 }
 
 fn move_system(world: &World) {
+    if let Some(game_state) = world.get_resource::<GameState>() {
+        if game_state.paused {
+            return;
+        }
+    }
+
     for (_entity, (pos, vel)) in world.query::<(&mut Position, &mut Velocity)>() {
         vel.x = 0.;
         vel.y = 0.;
@@ -80,6 +90,19 @@ fn collision_system(world: &World) {
 }
 
 fn render_system(world: &World) {
+    if let Some(game_state) = world.get_resource::<GameState>() {
+        if game_state.paused {
+            let text = "PAUSED";
+            let font_size = 100.;
+            let text_width = measure_text(text, None, font_size as u16, 1.).width;
+            let (x, y) = ((screen_width() - text_width) / 2., screen_height() / 2.);
+
+            draw_text(text, x, y, font_size, RED);
+
+            return;
+        }
+    }
+
     for (_, (pos, sprite)) in world.query::<(&Position, &Sprite)>() {
         match sprite.shape {
             Shape::Square => draw_rectangle(
@@ -121,6 +144,8 @@ async fn main() {
         world.spawn((Powerup { active: true }, Position { x, y }));
     }
 
+    world.add_resource(GameState { paused: false });
+
     // macroquad is single threaded so any systems executng it's code cannot be run in parallel
     world.add_system(move_system, ExecutionMode::Serial);
     world.add_system(collision_system, ExecutionMode::Parallel);
@@ -128,6 +153,12 @@ async fn main() {
 
     loop {
         clear_background(SKYBLUE);
+
+        if is_key_pressed(KeyCode::P) {
+            if let Some(game_state) = world.get_resource_mut::<GameState>() {
+                game_state.paused = !game_state.paused;
+            }
+        }
 
         // run all parallel and sequential systems
         world.run_systems();
