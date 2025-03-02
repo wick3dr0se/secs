@@ -1,12 +1,8 @@
-use std::{
-    any::{Any, TypeId},
-    collections::HashMap,
-    sync::RwLock,
-};
+use std::{any::TypeId, collections::HashMap, sync::RwLock};
 
 use bimap::BiMap;
 
-use crate::world::Entity;
+use crate::world::{Entity, SendSync};
 
 pub struct SparseSet<C> {
     pub sparse: BiMap<Entity, usize>,
@@ -65,11 +61,11 @@ impl<C> SparseSet<C> {
 
 #[derive(Default)]
 pub struct SparseSets {
-    sets: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
+    sets: HashMap<TypeId, RwLock<Box<dyn SendSync>>>,
 }
 
 impl SparseSets {
-    pub fn insert<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
+    pub fn insert<C: SendSync>(&mut self, entity: Entity, component: C) {
         self.sets.insert(
             TypeId::of::<C>(),
             RwLock::new(Box::new(SparseSet::new(entity, component))),
@@ -81,7 +77,7 @@ impl SparseSets {
             let guard = set.read().unwrap();
 
             unsafe {
-                (guard.as_ref() as *const dyn Any)
+                (guard.as_ref() as *const dyn SendSync)
                     .cast::<SparseSet<C>>()
                     .as_ref()
             }
@@ -93,7 +89,7 @@ impl SparseSets {
             let mut guard = set.write().unwrap();
 
             unsafe {
-                (guard.as_mut() as *mut dyn Any)
+                (guard.as_mut() as *mut dyn SendSync)
                     .cast::<SparseSet<C>>()
                     .as_mut()
             }
