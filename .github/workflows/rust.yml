@@ -56,8 +56,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
     - uses: actions/checkout@v4
-      with:
-        path: "dir with spaces/ui test"
     - uses: dtolnay/rust-toolchain@stable
     - name: Build
       run: cargo build --verbose
