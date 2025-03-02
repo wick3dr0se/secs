@@ -54,9 +54,9 @@ impl World {
     }
 
     pub fn detach<C: 'static>(&mut self, entity: Entity) {
-        self.sparse_sets
-            .get_mut::<C>()
-            .map(|set| set.remove(entity));
+        if let Some(set) = self.sparse_sets.get_mut::<C>() {
+            set.remove(entity)
+        }
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (thunderdome::Index, Q)> + 'a {
