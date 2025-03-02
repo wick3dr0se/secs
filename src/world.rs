@@ -8,7 +8,7 @@ use thunderdome::{Arena, Index};
 use crate::{
     components::AttachComponents,
     query::Query,
-    scheduler::{ExecutionMode, Scheduler, System},
+    scheduler::{ExecutionMode, MutSystem, Scheduler, System},
     sparse_set::{SparseSet, SparseSets},
 };
 
@@ -87,12 +87,22 @@ impl World {
         self.scheduler.register(system, mode);
     }
 
+    pub fn add_mut_system(&mut self, system: MutSystem) {
+        self.scheduler.register_mut(system);
+    }
+
     pub fn remove_system(&mut self, system: System) {
         self.scheduler.deregister(system);
     }
 
-    pub fn run_systems(&self) {
-        self.scheduler.run(self);
+    pub fn remove_mut_system(&mut self, system: MutSystem) {
+        self.scheduler.deregister_mut(system);
+    }
+
+    pub fn run_systems(&mut self) {
+        // Shallow clone, everything is reference counted inside
+        let scheduler = self.scheduler.clone();
+        scheduler.run(self);
     }
 }
 
