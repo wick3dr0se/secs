@@ -41,8 +41,8 @@ impl<C> SparseSet<C> {
         }
     }
 
-    pub fn get(&self, entity: Entity) -> Option<&usize> {
-        self.sparse.get_by_left(&entity)
+    pub fn get(&self, entity: Entity) -> Option<usize> {
+        self.sparse.get_by_left(&entity).copied()
     }
 
     pub fn iter(&self) -> impl Iterator<Item = (Entity, &C)> {
