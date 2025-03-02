@@ -24,7 +24,7 @@ impl Scheduler {
         if let Some(pos) = self
             .systems
             .iter()
-            .position(|(s, _)| s as *const _ == system as *const _)
+            .position(|(s, _)| *s as *const _ == system as *const _)
         {
             self.systems.remove(pos);
         }
