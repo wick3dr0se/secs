@@ -1,4 +1,9 @@
-use crate::world::{Entity, World, WorldQuery};
+use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
+
+use crate::{
+    sparse_set::SparseSet,
+    world::{Entity, World, WorldQuery},
+};
 
 pub trait Query<'a>: Sized {
     type Short<'b>;
@@ -7,15 +12,46 @@ pub trait Query<'a>: Sized {
     fn get_components(world: &'a World, f: impl for<'b> FnMut(Entity, Self::Short<'b>));
 }
 
-impl<'a, C1: 'static> Query<'a> for (&'a C1,) {
-    type Short<'b> = (&'b C1,);
+/// A helper that allows more copy paste
+pub trait SparseSetGetter<'a> {
+    type Short<'b>;
+    type Iter;
+    fn get(world: &'a World) -> Option<Self::Iter>;
+    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)>;
+}
+
+impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
+    type Short<'b> = &'b C;
+    type Iter = MappedRwLockReadGuard<'a, SparseSet<C>>;
+    fn get(world: &'a World) -> Option<Self::Iter> {
+        world.get_sparse_set()
+    }
+    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
+        (&**iter).into_iter()
+    }
+}
+
+impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
+    type Short<'b> = &'b mut C;
+    type Iter = MappedRwLockWriteGuard<'a, SparseSet<C>>;
+    fn get(world: &'a World) -> Option<Self::Iter> {
+        world.get_sparse_set_mut()
+    }
+    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
+        (&mut **iter).into_iter()
+    }
+}
+
+impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
+    type Short<'b> = (T::Short<'b>,);
 
     #[track_caller]
     fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
+        let Some(mut s1) = T::get(world) else {
             return;
         };
-        for (entity, c1) in &*s1 {
+
+        for (entity, c1) in T::iter(&mut s1) {
             f(entity, (c1,));
         }
     }
@@ -36,20 +72,6 @@ impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a C2) {
             let Some(c2) = s2.get(entity) else { continue };
             let c2 = &s2.dense[c2];
             f(entity, (c1, c2));
-        }
-    }
-}
-
-impl<'a, C1: 'static> Query<'a> for (&'a mut C1,) {
-    type Short<'b> = (&'b mut C1,);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
-            return;
-        };
-        for (entity, c1) in &mut *s1 {
-            f(entity, (c1,));
         }
     }
 }
