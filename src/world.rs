@@ -1,8 +1,16 @@
-use std::{any::{Any, TypeId}, collections::HashMap};
+use std::{
+    any::{Any, TypeId},
+    collections::HashMap,
+};
 
 use thunderdome::{Arena, Index};
 
-use crate::{components::AttachComponents, query::Query, scheduler::{ExecutionMode, Scheduler, System}, sparse_set::{SparseSet, SparseSets}};
+use crate::{
+    components::AttachComponents,
+    query::Query,
+    scheduler::{ExecutionMode, Scheduler, System},
+    sparse_set::{SparseSet, SparseSets},
+};
 
 pub type Entity = Index;
 
@@ -11,11 +19,15 @@ pub struct World {
     entities: Arena<()>,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
-    resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>
+    resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
 }
 
 impl World {
-    pub(crate) fn attach_component<C: 'static + Send + Sync>(&mut self, entity: Entity, component: C) {
+    pub(crate) fn attach_component<C: 'static + Send + Sync>(
+        &mut self,
+        entity: Entity,
+        component: C,
+    ) {
         if let Some(set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
@@ -34,7 +46,9 @@ impl World {
     }
 
     pub fn detach<C: 'static>(&mut self, entity: Entity) {
-        self.sparse_sets.get_mut::<C>().map(|set| set.remove(entity));
+        self.sparse_sets
+            .get_mut::<C>()
+            .map(|set| set.remove(entity));
     }
 
     pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (thunderdome::Index, Q)> + 'a {
@@ -46,11 +60,15 @@ impl World {
     }
 
     pub fn get_resource<R: 'static>(&self) -> Option<&R> {
-        self.resources.get(&TypeId::of::<R>()).and_then(|r| r.downcast_ref())
+        self.resources
+            .get(&TypeId::of::<R>())
+            .and_then(|r| r.downcast_ref())
     }
 
     pub fn get_resource_mut<R: 'static>(&mut self) -> Option<&mut R> {
-        self.resources.get_mut(&TypeId::of::<R>()).and_then(|r| r.downcast_mut())
+        self.resources
+            .get_mut(&TypeId::of::<R>())
+            .and_then(|r| r.downcast_mut())
     }
 
     pub fn remove_resource<R: 'static>(&mut self) {

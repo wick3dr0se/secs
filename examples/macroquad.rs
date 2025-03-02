@@ -2,36 +2,36 @@ use macroquad::{prelude::*, rand, ui::root_ui};
 use secs::prelude::{ExecutionMode, World};
 
 struct GameState {
-    paused: bool
+    paused: bool,
 }
 
 struct Position {
     x: f32,
-    y: f32
+    y: f32,
 }
 
 struct Velocity {
     x: f32,
-    y: f32
+    y: f32,
 }
 
 struct Sprite {
     shape: Shape,
     width: f32,
-    height: f32
+    height: f32,
 }
 
 struct Powerup {
-    active: bool
+    active: bool,
 }
 
 struct Score {
-    value: i32
+    value: i32,
 }
 
 enum Shape {
     Square,
-    Circle
+    Circle,
 }
 
 fn move_system(world: &World) {
@@ -67,9 +67,7 @@ fn collision_system(world: &World) {
     for (_, (player_pos, player_spr, player_score)) in
         world.query::<(&Position, &mut Sprite, &mut Score)>()
     {
-        for (_, (powerup_pos, powerup)) in
-            world.query::<(&Position, &mut Powerup)>()
-        {
+        for (_, (powerup_pos, powerup)) in world.query::<(&Position, &mut Powerup)>() {
             if powerup.active
                 && (powerup_pos.x - player_pos.x).abs() < player_spr.width
                 && (powerup_pos.y - player_pos.y).abs() < player_spr.height
@@ -78,7 +76,7 @@ fn collision_system(world: &World) {
 
                 player_spr.shape = match player_spr.shape {
                     Shape::Square => Shape::Circle,
-                    Shape::Circle => Shape::Square
+                    Shape::Circle => Shape::Square,
                 };
 
                 player_score.value += 1;
@@ -105,13 +103,13 @@ fn render_system(world: &World) {
 
     for (_, (pos, sprite)) in world.query::<(&Position, &Sprite)>() {
         match sprite.shape {
-            Shape::Square => draw_rectangle(
-                pos.x, pos.y, sprite.width, sprite.height, ORANGE
-            ),
+            Shape::Square => draw_rectangle(pos.x, pos.y, sprite.width, sprite.height, ORANGE),
             Shape::Circle => draw_circle(
-                pos.x + sprite.width / 2., pos.y + sprite.height / 2.,
-                sprite.width / 2., PURPLE
-            )
+                pos.x + sprite.width / 2.,
+                pos.y + sprite.height / 2.,
+                sprite.width / 2.,
+                PURPLE,
+            ),
         }
     }
 
@@ -133,8 +131,12 @@ async fn main() {
     world.spawn((
         Position { x: 100., y: 100. },
         Velocity { x: 0., y: 0. },
-        Sprite { shape: Shape::Circle, width: 20., height: 20. },
-        Score { value: 0 }
+        Sprite {
+            shape: Shape::Circle,
+            width: 20.,
+            height: 20.,
+        },
+        Score { value: 0 },
     ));
 
     for _ in 0..50 {
