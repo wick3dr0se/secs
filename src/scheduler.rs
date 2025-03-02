@@ -26,7 +26,7 @@ impl Scheduler {
         if let Some(pos) = self
             .systems
             .iter()
-            .position(|(s, _)| *s as *const () == system as *const ())
+            .position(|(s, _)| std::ptr::fn_addr_eq(*s, system))
         {
             self.systems.remove(pos);
         }
