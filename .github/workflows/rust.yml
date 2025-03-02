@@ -41,7 +41,7 @@ jobs:
       with:
         components: miri
     - name: Miri
-      run: cargo miri test
+      run: env MIRIFLAGS="-Zmiri-tree-borrows" cargo miri test
 
   tests:
     strategy:
