@@ -1,14 +1,14 @@
 use crate::world::{Entity, World, WorldQuery};
 
 pub trait Query<'a> {
-    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a>; 
+    fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a>;
 }
 
 impl<'a, C: 'static> Query<'a> for (&'a C,) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
-        world.get_sparse_set::<C>().map(|set| {
-            set.iter().map(|(entity, component)| (entity, (component,)))
-        })
+        world
+            .get_sparse_set::<C>()
+            .map(|set| set.iter().map(|(entity, component)| (entity, (component,))))
     }
 }
 
@@ -21,7 +21,7 @@ impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a C2) {
             s2.get(entity).map(|_| {
                 let idx2 = s2.get(entity).unwrap();
                 let c2 = &s2.dense[*idx2];
-                
+
                 (entity, (c1, c2))
             })
         }))
@@ -31,7 +31,8 @@ impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a C2) {
 impl<'a, C: 'static> Query<'a> for (&'a mut C,) {
     fn get_components(world: &'a World) -> Option<impl Iterator<Item = (Entity, Self)> + 'a> {
         world.get_sparse_set_mut::<C>().map(|set| {
-            set.iter_mut().map(|(entity, component)| (entity, (component,)))
+            set.iter_mut()
+                .map(|(entity, component)| (entity, (component,)))
         })
     }
 }
@@ -61,7 +62,7 @@ impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a mut C2) {
 
         Some(s1.iter().filter_map(move |(entity, c1)| {
             let idx2 = s2.get(entity)?;
-            
+
             Some((entity, (c1, unsafe { &mut *dense2.add(*idx2) })))
         }))
     }
@@ -75,7 +76,7 @@ impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a mut C1, &'a C2) {
 
         Some(s2.iter().filter_map(move |(entity, c2)| {
             let idx1 = s1.get(entity)?;
-            
+
             Some((entity, (unsafe { &mut *dense1.add(*idx1) }, c2)))
         }))
     }
@@ -109,11 +110,13 @@ impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a m
             let idx2 = s2.get(entity)?;
             let idx3 = s3.get(entity)?;
 
-            Some((entity, unsafe {(
-                &mut *dense1.add(idx1),
-                &mut *dense2.add(*idx2),
-                &mut *dense3.add(*idx3)
-            )}))
+            Some((entity, unsafe {
+                (
+                    &mut *dense1.add(idx1),
+                    &mut *dense2.add(*idx2),
+                    &mut *dense3.add(*idx3),
+                )
+            }))
         }))
     }
 }
@@ -200,7 +203,9 @@ impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a C
             let idx1 = s1.get(entity)?;
             let idx3 = s3.get(entity)?;
 
-            Some((entity, unsafe { (&mut *dense1.add(*idx1), c2, &mut *dense3.add(*idx3)) }))
+            Some((entity, unsafe {
+                (&mut *dense1.add(*idx1), c2, &mut *dense3.add(*idx3))
+            }))
         }))
     }
 }

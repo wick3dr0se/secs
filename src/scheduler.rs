@@ -7,12 +7,12 @@ pub type System = fn(&World);
 #[derive(PartialEq)]
 pub enum ExecutionMode {
     Parallel,
-    Serial
+    Serial,
 }
 
 #[derive(Default)]
 pub struct Scheduler {
-    systems: Vec<(System, ExecutionMode)>
+    systems: Vec<(System, ExecutionMode)>,
 }
 
 impl Scheduler {
@@ -21,7 +21,8 @@ impl Scheduler {
     }
 
     pub(crate) fn deregister(&mut self, system: System) {
-        if let Some(pos) = self.systems
+        if let Some(pos) = self
+            .systems
             .iter()
             .position(|(s, _)| s as *const _ == system as *const _)
         {
@@ -30,11 +31,13 @@ impl Scheduler {
     }
 
     pub(crate) fn run(&self, world: &World) {
-        self.systems.par_iter()
-        .filter(|(_, mode)| *mode == ExecutionMode::Parallel)
-        .for_each(|(sys, _)| sys(world));
+        self.systems
+            .par_iter()
+            .filter(|(_, mode)| *mode == ExecutionMode::Parallel)
+            .for_each(|(sys, _)| sys(world));
 
-        self.systems.iter()
+        self.systems
+            .iter()
             .filter(|(_, mode)| *mode == ExecutionMode::Serial)
             .for_each(|(sys, _)| sys(world));
     }
