@@ -1,3 +1,4 @@
+#[cfg(feature = "multithreaded")]
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
 
 use crate::world::World;
@@ -6,6 +7,7 @@ pub type System = fn(&World);
 
 #[derive(PartialEq)]
 pub enum ExecutionMode {
+    #[cfg(feature = "multithreaded")]
     Parallel,
     Serial,
 }
@@ -24,21 +26,28 @@ impl Scheduler {
         if let Some(pos) = self
             .systems
             .iter()
-            .position(|(s, _)| *s as *const _ == system as *const _)
+            .position(|(s, _)| *s as *const () == system as *const ())
         {
             self.systems.remove(pos);
         }
     }
 
     pub(crate) fn run(&self, world: &World) {
-        self.systems
-            .par_iter()
-            .filter(|(_, mode)| *mode == ExecutionMode::Parallel)
-            .for_each(|(sys, _)| sys(world));
+        #[cfg(feature = "multithreaded")]
+        {
+            self.systems
+                .par_iter()
+                .filter(|(_, mode)| *mode == ExecutionMode::Parallel)
+                .for_each(|(sys, _)| sys(world));
 
-        self.systems
-            .iter()
-            .filter(|(_, mode)| *mode == ExecutionMode::Serial)
-            .for_each(|(sys, _)| sys(world));
+            self.systems
+                .iter()
+                .filter(|(_, mode)| *mode == ExecutionMode::Serial)
+                .for_each(|(sys, _)| sys(world));
+        }
+        #[cfg(not(feature = "multithreaded"))]
+        {
+            self.systems.iter().for_each(|(sys, _)| sys(world));
+        }
     }
 }

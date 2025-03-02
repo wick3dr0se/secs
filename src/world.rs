@@ -14,20 +14,28 @@ use crate::{
 
 pub type Entity = Index;
 
+#[cfg(feature = "multithreaded")]
+pub trait SendSync: Any + Send + Sync {}
+#[cfg(not(feature = "multithreaded"))]
+pub trait SendSync: Any {}
+#[cfg(feature = "multithreaded")]
+impl<T: ?Sized + Send + Sync + Any> SendSync for T {}
+#[cfg(not(feature = "multithreaded"))]
+impl<T: ?Sized + Any> SendSync for T {}
+
 #[derive(Default)]
 pub struct World {
     entities: Arena<()>,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
+    #[cfg(feature = "multithreaded")]
     resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    #[cfg(not(feature = "multithreaded"))]
+    resources: HashMap<TypeId, Box<dyn Any>>,
 }
 
 impl World {
-    pub(crate) fn attach_component<C: 'static + Send + Sync>(
-        &mut self,
-        entity: Entity,
-        component: C,
-    ) {
+    pub(crate) fn attach_component<C: SendSync>(&mut self, entity: Entity, component: C) {
         if let Some(set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
@@ -55,7 +63,7 @@ impl World {
         Q::get_components(self).into_iter().flatten()
     }
 
-    pub fn add_resource<R: 'static + Send + Sync>(&mut self, res: R) {
+    pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
         self.resources.insert(TypeId::of::<R>(), Box::new(res));
     }
 

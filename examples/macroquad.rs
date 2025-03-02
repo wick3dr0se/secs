@@ -148,9 +148,16 @@ async fn main() {
 
     world.add_resource(GameState { paused: false });
 
-    // macroquad is single threaded so any systems executng it's code cannot be run in parallel
+    // macroquad is single threaded so any systems executing its code cannot be run in parallel
     world.add_system(move_system, ExecutionMode::Serial);
-    world.add_system(collision_system, ExecutionMode::Parallel);
+    #[cfg(feature = "multithreaded")]
+    {
+        world.add_system(collision_system, ExecutionMode::Parallel);
+    }
+    #[cfg(not(feature = "multithreaded"))]
+    {
+        world.add_system(collision_system, ExecutionMode::Serial);
+    }
     world.add_system(render_system, ExecutionMode::Serial);
 
     loop {
