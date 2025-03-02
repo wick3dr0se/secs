@@ -6,27 +6,35 @@ use crate::{
 };
 
 pub trait Query<'a>: Sized {
-    type Short<'b>;
+    type Short<'b, 'c, 'd, 'e, 'f>;
 
     #[track_caller]
-    fn get_components(world: &'a World, f: impl for<'b> FnMut(Entity, Self::Short<'b>));
+    fn get_components(
+        world: &'a World,
+        f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    );
 }
 
 /// A helper that allows more copy paste
 pub trait SparseSetGetter<'a> {
     type Short<'b>;
     type Iter;
-    fn get(world: &'a World) -> Option<Self::Iter>;
-    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)>;
+    fn get_set(world: &'a World) -> Option<Self::Iter>;
+    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>>;
+    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>;
 }
 
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
     type Short<'b> = &'b C;
     type Iter = MappedRwLockReadGuard<'a, SparseSet<C>>;
-    fn get(world: &'a World) -> Option<Self::Iter> {
+    fn get_set(world: &'a World) -> Option<Self::Iter> {
         world.get_sparse_set()
     }
-    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
+    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+        let id = iter.get(entity)?;
+        Some(&iter.dense[id])
+    }
+    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
         (&**iter).into_iter()
     }
 }
@@ -34,20 +42,27 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
     type Short<'b> = &'b mut C;
     type Iter = MappedRwLockWriteGuard<'a, SparseSet<C>>;
-    fn get(world: &'a World) -> Option<Self::Iter> {
+    fn get_set(world: &'a World) -> Option<Self::Iter> {
         world.get_sparse_set_mut()
     }
-    fn iter<'b>(iter: &'b mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
+    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+        let id = iter.get(entity)?;
+        Some(&mut iter.dense[id])
+    }
+    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
         (&mut **iter).into_iter()
     }
 }
 
 impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
-    type Short<'b> = (T::Short<'b>,);
+    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>,);
 
     #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = T::get(world) else {
+    fn get_components(
+        world: &'a World,
+        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    ) {
+        let Some(mut s1) = T::get_set(world) else {
             return;
         };
 
@@ -57,270 +72,157 @@ impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
     }
 }
 
-impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a C2) {
-    type Short<'b> = (&'b C1, &'b C2);
+impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for (T, U) {
+    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>);
 
     #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
+    fn get_components(
+        world: &'a World,
+        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    ) {
+        let Some(mut s1) = T::get_set(world) else {
             return;
         };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
+        let Some(mut s2) = U::get_set(world) else {
             return;
         };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
+
+        for (entity, c1) in T::iter(&mut s1) {
+            let Some(c2) = U::get_entity(&mut s2, entity) else {
+                continue;
+            };
             f(entity, (c1, c2));
         }
     }
 }
 
-impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a mut C1, &'a mut C2) {
-    type Short<'b> = (&'b mut C1, &'b mut C2);
+impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a, V: SparseSetGetter<'a> + 'a>
+    Query<'a> for (T, U, V)
+{
+    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>);
 
     #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
+    fn get_components(
+        world: &'a World,
+        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    ) {
+        let Some(mut s1) = T::get_set(world) else {
             return;
         };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
+        let Some(mut s2) = U::get_set(world) else {
             return;
         };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            f(entity, (c1, c2));
-        }
-    }
-}
+        let Some(mut s3) = V::get_set(world) else {
+            return;
+        };
 
-impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a C1, &'a mut C2) {
-    type Short<'b> = (&'b C1, &'b mut C2);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
-            return;
-        };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
-            return;
-        };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            f(entity, (c1, c2));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static> Query<'a> for (&'a mut C1, &'a C2) {
-    type Short<'b> = (&'b mut C1, &'b C2);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
-            return;
-        };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
-            return;
-        };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
-            f(entity, (c1, c2));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a C1, &'a C2, &'a C3) {
-    type Short<'b> = (&'b C1, &'b C2, &'b C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
-            return;
-        };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
-            return;
-        };
-        let Some(s3) = world.get_sparse_set::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &s3.dense[c3];
+        for (entity, c1) in T::iter(&mut s1) {
+            let Some(c2) = U::get_entity(&mut s2, entity) else {
+                continue;
+            };
+            let Some(c3) = V::get_entity(&mut s3, entity) else {
+                continue;
+            };
             f(entity, (c1, c2, c3));
         }
     }
 }
 
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a mut C2, &'a mut C3) {
-    type Short<'b> = (&'b mut C1, &'b mut C2, &'b mut C3);
+impl<
+    'a,
+    T: SparseSetGetter<'a> + 'a,
+    U: SparseSetGetter<'a> + 'a,
+    V: SparseSetGetter<'a> + 'a,
+    W: SparseSetGetter<'a> + 'a,
+> Query<'a> for (T, U, V, W)
+{
+    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>, W::Short<'e>);
 
     #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
+    fn get_components(
+        world: &'a World,
+        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    ) {
+        let Some(mut s1) = T::get_set(world) else {
             return;
         };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
+        let Some(mut s2) = U::get_set(world) else {
             return;
         };
-        let Some(mut s3) = world.get_sparse_set_mut::<C3>() else {
+        let Some(mut s3) = V::get_set(world) else {
             return;
         };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &mut s3.dense[c3];
-            f(entity, (c1, c2, c3));
+        let Some(mut s4) = W::get_set(world) else {
+            return;
+        };
+
+        for (entity, c1) in T::iter(&mut s1) {
+            let Some(c2) = U::get_entity(&mut s2, entity) else {
+                continue;
+            };
+            let Some(c3) = V::get_entity(&mut s3, entity) else {
+                continue;
+            };
+            let Some(c4) = W::get_entity(&mut s4, entity) else {
+                continue;
+            };
+            f(entity, (c1, c2, c3, c4));
         }
     }
 }
 
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a C2, &'a C3) {
-    type Short<'b> = (&'b mut C1, &'b C2, &'b C3);
+impl<
+    'a,
+    T: SparseSetGetter<'a> + 'a,
+    U: SparseSetGetter<'a> + 'a,
+    V: SparseSetGetter<'a> + 'a,
+    W: SparseSetGetter<'a> + 'a,
+    X: SparseSetGetter<'a> + 'a,
+> Query<'a> for (T, U, V, W, X)
+{
+    type Short<'b, 'c, 'd, 'e, 'f> = (
+        T::Short<'b>,
+        U::Short<'c>,
+        V::Short<'d>,
+        W::Short<'e>,
+        X::Short<'f>,
+    );
 
     #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
+    fn get_components(
+        world: &'a World,
+        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
+    ) {
+        let Some(mut s1) = T::get_set(world) else {
             return;
         };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
+        let Some(mut s2) = U::get_set(world) else {
             return;
         };
-        let Some(s3) = world.get_sparse_set::<C3>() else {
+        let Some(mut s3) = V::get_set(world) else {
             return;
         };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &s3.dense[c3];
-            f(entity, (c1, c2, c3));
-        }
-    }
-}
+        let Some(mut s4) = W::get_set(world) else {
+            return;
+        };
+        let Some(mut s5) = X::get_set(world) else {
+            return;
+        };
 
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a C1, &'a mut C2, &'a mut C3) {
-    type Short<'b> = (&'b C1, &'b mut C2, &'b mut C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
-            return;
-        };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
-            return;
-        };
-        let Some(mut s3) = world.get_sparse_set_mut::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &mut s3.dense[c3];
-            f(entity, (c1, c2, c3));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a mut C2, &'a C3) {
-    type Short<'b> = (&'b mut C1, &'b mut C2, &'b C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
-            return;
-        };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
-            return;
-        };
-        let Some(s3) = world.get_sparse_set::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &s3.dense[c3];
-            f(entity, (c1, c2, c3));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a C1, &'a mut C2, &'a C3) {
-    type Short<'b> = (&'b C1, &'b mut C2, &'b C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
-            return;
-        };
-        let Some(mut s2) = world.get_sparse_set_mut::<C2>() else {
-            return;
-        };
-        let Some(s3) = world.get_sparse_set::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &mut s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &s3.dense[c3];
-            f(entity, (c1, c2, c3));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a mut C1, &'a C2, &'a mut C3) {
-    type Short<'b> = (&'b mut C1, &'b C2, &'b mut C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(mut s1) = world.get_sparse_set_mut::<C1>() else {
-            return;
-        };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
-            return;
-        };
-        let Some(mut s3) = world.get_sparse_set_mut::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &mut *s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &mut s3.dense[c3];
-            f(entity, (c1, c2, c3));
-        }
-    }
-}
-
-impl<'a, C1: 'static, C2: 'static, C3: 'static> Query<'a> for (&'a C1, &'a C2, &'a mut C3) {
-    type Short<'b> = (&'b C1, &'b C2, &'b mut C3);
-
-    #[track_caller]
-    fn get_components(world: &'a World, mut f: impl for<'b> FnMut(Entity, Self::Short<'b>)) {
-        let Some(s1) = world.get_sparse_set::<C1>() else {
-            return;
-        };
-        let Some(s2) = world.get_sparse_set::<C2>() else {
-            return;
-        };
-        let Some(mut s3) = world.get_sparse_set_mut::<C3>() else {
-            return;
-        };
-        for (entity, c1) in &*s1 {
-            let Some(c2) = s2.get(entity) else { continue };
-            let c2 = &s2.dense[c2];
-            let Some(c3) = s3.get(entity) else { continue };
-            let c3 = &mut s3.dense[c3];
-            f(entity, (c1, c2, c3));
+        for (entity, c1) in T::iter(&mut s1) {
+            let Some(c2) = U::get_entity(&mut s2, entity) else {
+                continue;
+            };
+            let Some(c3) = V::get_entity(&mut s3, entity) else {
+                continue;
+            };
+            let Some(c4) = W::get_entity(&mut s4, entity) else {
+                continue;
+            };
+            let Some(c5) = X::get_entity(&mut s5, entity) else {
+                continue;
+            };
+            f(entity, (c1, c2, c3, c4, c5));
         }
     }
 }
