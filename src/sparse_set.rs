@@ -47,18 +47,65 @@ impl<C> SparseSet<C> {
     pub fn get(&self, entity: Entity) -> Option<usize> {
         self.sparse.get_by_left(&entity).copied()
     }
+}
 
-    pub fn iter(&self) -> impl Iterator<Item = (Entity, &C)> {
-        self.sparse
-            .iter()
+pub struct SparseSetIter<'a, C> {
+    iter: bimap::hash::Iter<'a, Entity, usize>,
+    dense: &'a [C],
+}
+
+impl<'a, C> Iterator for SparseSetIter<'a, C> {
+    type Item = (Entity, &'a C);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.iter
+            .next()
             .map(|(&entity, &idx)| (entity, &self.dense[idx]))
     }
+}
 
-    pub fn iter_mut(&mut self) -> impl Iterator<Item = (Entity, &mut C)> {
-        self.dense
-            .iter_mut()
-            .enumerate()
-            .map(|(idx, component)| (*self.sparse.get_by_right(&idx).unwrap(), component))
+impl<'a, C> IntoIterator for &'a SparseSet<C> {
+    type Item = (Entity, &'a C);
+
+    type IntoIter = SparseSetIter<'a, C>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        SparseSetIter {
+            iter: self.sparse.iter(),
+            dense: &self.dense,
+        }
+    }
+}
+
+pub struct SparseSetIterMut<'a, C> {
+    iter: bimap::hash::Iter<'a, Entity, usize>,
+    dense: &'a mut [C],
+}
+
+impl<'a, C> Iterator for SparseSetIterMut<'a, C> {
+    type Item = (Entity, &'a mut C);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // SAFETY: We know for a fact that no two entries in `iter` have the same `usize` value,
+        // so we are able to ensure mutual exclusion.
+        let dense: &'a mut [C] =
+            unsafe { std::slice::from_raw_parts_mut(self.dense.as_mut_ptr(), self.dense.len()) };
+        self.iter
+            .next()
+            .map(move |(&entity, &idx)| (entity, &mut dense[idx]))
+    }
+}
+
+impl<'a, C> IntoIterator for &'a mut SparseSet<C> {
+    type Item = (Entity, &'a mut C);
+
+    type IntoIter = SparseSetIterMut<'a, C>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        SparseSetIterMut {
+            iter: self.sparse.iter(),
+            dense: &mut self.dense,
+        }
     }
 }
 
