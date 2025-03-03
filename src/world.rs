@@ -3,6 +3,7 @@ use std::{
     collections::HashMap,
 };
 
+use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 use thunderdome::{Arena, Index};
 
 use crate::{
@@ -36,7 +37,7 @@ pub struct World {
 
 impl World {
     pub(crate) fn attach_component<C: SendSync>(&mut self, entity: Entity, component: C) {
-        if let Some(set) = self.sparse_sets.get_mut::<C>() {
+        if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
             self.sparse_sets.insert(entity, component);
@@ -54,7 +55,7 @@ impl World {
     }
 
     pub fn detach<C: 'static>(&mut self, entity: Entity) {
-        if let Some(set) = self.sparse_sets.get_mut::<C>() {
+        if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.remove(entity)
         }
     }
@@ -107,16 +108,16 @@ impl World {
 }
 
 pub trait WorldQuery {
-    fn get_sparse_set<C: 'static>(&self) -> Option<&SparseSet<C>>;
-    fn get_sparse_set_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>>;
+    fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>>;
+    fn get_sparse_set_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>>;
 }
 
 impl WorldQuery for World {
-    fn get_sparse_set<C: 'static>(&self) -> Option<&SparseSet<C>> {
+    fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
         self.sparse_sets.get::<C>()
     }
 
-    fn get_sparse_set_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>> {
+    fn get_sparse_set_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
         self.sparse_sets.get_mut::<C>()
     }
 }

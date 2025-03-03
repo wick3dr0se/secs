@@ -1,4 +1,7 @@
-use std::{any::TypeId, collections::HashMap, sync::RwLock};
+use parking_lot::{
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
+use std::{any::TypeId, collections::HashMap};
 
 use bimap::BiMap;
 
@@ -72,27 +75,31 @@ impl SparseSets {
         );
     }
 
-    pub fn get<C: 'static>(&self) -> Option<&SparseSet<C>> {
-        self.sets.get(&TypeId::of::<C>()).and_then(|set| {
-            let guard = set.read().unwrap();
-
-            unsafe {
-                (guard.as_ref() as *const dyn SendSync)
-                    .cast::<SparseSet<C>>()
-                    .as_ref()
-            }
-        })
+    pub fn get<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
+        let set = self.sets.get(&TypeId::of::<C>())?;
+        let Some(guard) = set.try_read() else {
+            panic!(
+                "Tried to access component `{}`, but it was already being written to",
+                std::any::type_name::<C>()
+            )
+        };
+        Some(RwLockReadGuard::map(guard, |dynbox| unsafe {
+            let dynthing: *const dyn SendSync = dynbox.as_ref();
+            &*dynthing.cast::<SparseSet<C>>()
+        }))
     }
 
-    pub fn get_mut<C: 'static>(&self) -> Option<&mut SparseSet<C>> {
-        self.sets.get(&TypeId::of::<C>()).and_then(|set| {
-            let mut guard = set.write().unwrap();
-
-            unsafe {
-                (guard.as_mut() as *mut dyn SendSync)
-                    .cast::<SparseSet<C>>()
-                    .as_mut()
-            }
-        })
+    pub fn get_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
+        let set = self.sets.get(&TypeId::of::<C>())?;
+        let Some(guard) = set.try_write() else {
+            panic!(
+                "Tried to access component `{}` mutably, but it was already being written to or read from",
+                std::any::type_name::<C>()
+            )
+        };
+        Some(RwLockWriteGuard::map(guard, |dynbox| unsafe {
+            let dynthing: *mut dyn SendSync = dynbox.as_mut();
+            &mut *dynthing.cast::<SparseSet<C>>()
+        }))
     }
 }
