@@ -122,6 +122,7 @@ impl SparseSets {
         );
     }
 
+    #[track_caller]
     pub fn get<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
         let set = self.sets.get(&TypeId::of::<C>())?;
         let Some(guard) = set.try_read() else {
@@ -136,6 +137,7 @@ impl SparseSets {
         }))
     }
 
+    #[track_caller]
     pub fn get_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
         let set = self.sets.get(&TypeId::of::<C>())?;
         let Some(guard) = set.try_write() else {

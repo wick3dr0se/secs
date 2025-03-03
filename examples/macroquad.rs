@@ -40,8 +40,7 @@ fn move_system(world: &World) {
             return;
         }
     }
-
-    for (_entity, (pos, vel)) in world.query::<(&mut Position, &mut Velocity)>() {
+    world.query::<(&mut Position, &mut Velocity)>(|_entity, (pos, vel)| {
         vel.x = 0.;
         vel.y = 0.;
 
@@ -60,31 +59,31 @@ fn move_system(world: &World) {
 
         pos.x += vel.x;
         pos.y += vel.y;
-    }
+    });
 }
 
 fn collision_system(world: &World) {
-    for (_, (player_pos, player_spr, player_score)) in
-        world.query::<(&Position, &mut Sprite, &mut Score)>()
-    {
-        for (_, (powerup_pos, powerup)) in world.query::<(&Position, &mut Powerup)>() {
-            if powerup.active
-                && (powerup_pos.x - player_pos.x).abs() < player_spr.width
-                && (powerup_pos.y - player_pos.y).abs() < player_spr.height
-            {
-                powerup.active = false;
+    world.query::<(&Position, &mut Sprite, &mut Score)>(
+        |_, (player_pos, player_spr, player_score)| {
+            world.query::<(&Position, &mut Powerup)>(|_, (powerup_pos, powerup)| {
+                if powerup.active
+                    && (powerup_pos.x - player_pos.x).abs() < player_spr.width
+                    && (powerup_pos.y - player_pos.y).abs() < player_spr.height
+                {
+                    powerup.active = false;
 
-                player_spr.shape = match player_spr.shape {
-                    Shape::Square => Shape::Circle,
-                    Shape::Circle => Shape::Square,
-                };
+                    player_spr.shape = match player_spr.shape {
+                        Shape::Square => Shape::Circle,
+                        Shape::Circle => Shape::Square,
+                    };
 
-                player_score.value += 1;
-                player_spr.width += 3.;
-                player_spr.height += 3.;
-            }
-        }
-    }
+                    player_score.value += 1;
+                    player_spr.width += 3.;
+                    player_spr.height += 3.;
+                }
+            });
+        },
+    )
 }
 
 fn render_system(world: &World) {
@@ -101,27 +100,25 @@ fn render_system(world: &World) {
         }
     }
 
-    for (_, (pos, sprite)) in world.query::<(&Position, &Sprite)>() {
-        match sprite.shape {
-            Shape::Square => draw_rectangle(pos.x, pos.y, sprite.width, sprite.height, ORANGE),
-            Shape::Circle => draw_circle(
-                pos.x + sprite.width / 2.,
-                pos.y + sprite.height / 2.,
-                sprite.width / 2.,
-                PURPLE,
-            ),
-        }
-    }
+    world.query::<(&Position, &Sprite)>(|_, (pos, sprite)| match sprite.shape {
+        Shape::Square => draw_rectangle(pos.x, pos.y, sprite.width, sprite.height, ORANGE),
+        Shape::Circle => draw_circle(
+            pos.x + sprite.width / 2.,
+            pos.y + sprite.height / 2.,
+            sprite.width / 2.,
+            PURPLE,
+        ),
+    });
 
-    for (_, (powerup, pos)) in world.query::<(&Powerup, &Position)>() {
+    world.query::<(&Powerup, &Position)>(|_, (powerup, pos)| {
         if powerup.active {
             draw_rectangle(pos.x, pos.y, 15., 15., RED);
         }
-    }
+    });
 
-    for (_, (score,)) in world.query::<(&Score,)>() {
+    world.query::<(&Score,)>(|_, (score,)| {
         root_ui().label(None, &format!("Player Score: {}", score.value));
-    }
+    });
 }
 
 #[macroquad::main("secs_macroquad")]

@@ -60,8 +60,9 @@ impl World {
         }
     }
 
-    pub fn query<'a, Q: Query<'a>>(&'a self) -> impl Iterator<Item = (thunderdome::Index, Q)> + 'a {
-        Q::get_components(self).into_iter().flatten()
+    #[track_caller]
+    pub fn query<'a, Q: Query<'a>>(&'a self, f: impl for<'b> FnMut(Entity, Q::Short<'b>)) {
+        Q::get_components(self, f)
     }
 
     pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
@@ -113,10 +114,12 @@ pub trait WorldQuery {
 }
 
 impl WorldQuery for World {
+    #[track_caller]
     fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
         self.sparse_sets.get::<C>()
     }
 
+    #[track_caller]
     fn get_sparse_set_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
         self.sparse_sets.get_mut::<C>()
     }
