@@ -39,6 +39,20 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
     }
 }
 
+impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
+    type Short<'b> = Option<T::Short<'b>>;
+    type Iter = T::Iter;
+    fn get_set(world: &'a World) -> Option<Self::Iter> {
+        T::get_set(world)
+    }
+    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+        Some(T::get_entity(iter, entity))
+    }
+    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
+        T::iter(iter).map(|(entity, thing)| (entity, Some(thing)))
+    }
+}
+
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
     type Short<'b> = &'b mut C;
     type Iter = MappedRwLockWriteGuard<'a, SparseSet<C>>;
