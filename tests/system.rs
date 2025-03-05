@@ -40,3 +40,16 @@ fn remove_within() {
     world.add_system(boom, ExecutionMode::Serial);
     world.run_systems();
 }
+
+#[test]
+fn despawn() {
+    let mut world = World::default();
+
+    let id = world.spawn((1_u32,));
+    world.spawn((10_u32, "foo"));
+    world.despawn(id);
+
+    let mut results = vec![];
+    world.query::<(&u32, Option<&&str>)>(|_, (i, s)| results.push((*i, s.map(|s| *s))));
+    assert_eq!(&results[..], &[(10, Some("foo"))]);
+}

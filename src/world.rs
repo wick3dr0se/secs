@@ -62,6 +62,11 @@ impl World {
         entity
     }
 
+    pub fn despawn(&mut self, entity: Entity) {
+        self.entities.remove(entity);
+        self.sparse_sets.remove(entity);
+    }
+
     pub fn attach<C: AttachComponents>(&mut self, entity: Entity, components: C) {
         components.attach_to_entity(self, entity);
     }

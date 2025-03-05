@@ -109,9 +109,19 @@ impl<'a, C> IntoIterator for &'a mut SparseSet<C> {
     }
 }
 
+trait Set: SendSync {
+    fn remove(&mut self, entity: Entity);
+}
+
+impl<C: SendSync> Set for SparseSet<C> {
+    fn remove(&mut self, entity: Entity) {
+        self.remove(entity);
+    }
+}
+
 #[derive(Default)]
 pub struct SparseSets {
-    sets: HashMap<TypeId, RwLock<Box<dyn SendSync>>>,
+    sets: HashMap<TypeId, RwLock<Box<dyn Set>>>,
 }
 
 impl SparseSets {
@@ -120,6 +130,17 @@ impl SparseSets {
             TypeId::of::<C>(),
             RwLock::new(Box::new(SparseSet::new(entity, component))),
         );
+    }
+
+    pub fn remove(&mut self, entity: Entity) {
+        for set in self.sets.values() {
+            let Some(mut guard) = set.try_write() else {
+                panic!(
+                    "Tried to access component mutably, but it is already being read or written to",
+                )
+            };
+            guard.remove(entity);
+        }
     }
 
     #[track_caller]
@@ -132,7 +153,7 @@ impl SparseSets {
             )
         };
         Some(RwLockReadGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *const dyn SendSync = dynbox.as_ref();
+            let dynthing: *const dyn Set = dynbox.as_ref();
             &*dynthing.cast::<SparseSet<C>>()
         }))
     }
@@ -147,7 +168,7 @@ impl SparseSets {
             )
         };
         Some(RwLockWriteGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *mut dyn SendSync = dynbox.as_mut();
+            let dynthing: *mut dyn Set = dynbox.as_mut();
             &mut *dynthing.cast::<SparseSet<C>>()
         }))
     }
