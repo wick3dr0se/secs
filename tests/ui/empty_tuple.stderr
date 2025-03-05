@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `(): secs::query::Query<'_>` is not satisfied
+ --> tests/ui/empty_tuple.rs:6:11
+  |
+6 |     world.query::<()>(|_, ()| {});
+  |           ^^^^^ the trait `secs::query::Query<'_>` is not implemented for `()`
+  |
+  = help: the following other types implement trait `secs::query::Query<'a>`:
+            (T, U)
+            (T, U, V)
+            (T, U, V, W)
+            (T, U, V, W, X)
+            (T,)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

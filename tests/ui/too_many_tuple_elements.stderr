@@ -1,0 +1,16 @@
+error[E0277]: the trait bound `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128): secs::query::Query<'_>` is not satisfied
+ --> tests/ui/too_many_tuple_elements.rs:6:11
+  |
+6 |     world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
+  |           ^^^^^ the trait `secs::query::Query<'_>` is not implemented for `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)`
+  |
+  = help: the following other types implement trait `secs::query::Query<'a>`:
+            (T, U)
+            (T, U, V)
+            (T, U, V, W)
+            (T, U, V, W, X)
+            (T,)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
