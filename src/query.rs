@@ -5,6 +5,11 @@ use crate::{
     world::{Entity, World},
 };
 
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a valid query",
+    label = "",
+    note = "only tuples with 1 or up to 5 elements can be used as queries"
+)]
 pub trait Query<'a>: Sized {
     type Short<'b, 'c, 'd, 'e, 'f>;
 
@@ -29,6 +34,11 @@ impl<T> Always for &T {}
 impl<T> Always for &mut T {}
 
 /// A helper that allows more copy paste
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be used as a query component",
+    label = "",
+    note = "only references and `Option`s of references can be components"
+)]
 pub trait SparseSetGetter<'a> {
     type Short<'b>;
     type Iter;

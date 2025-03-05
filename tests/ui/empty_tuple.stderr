@@ -1,0 +1,18 @@
+error[E0277]: `()` is not a valid query
+ --> tests/ui/empty_tuple.rs:6:11
+  |
+6 |     world.query::<()>(|_, ()| {});
+  |           ^^^^^
+  |
+  = help: the trait `secs::query::Query<'_>` is not implemented for `()`
+  = note: only tuples with 1 or up to 5 elements can be used as queries
+  = help: the following other types implement trait `secs::query::Query<'a>`:
+            (T, U)
+            (T, U, V)
+            (T, U, V, W)
+            (T, U, V, W, X)
+            (T,)
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.
