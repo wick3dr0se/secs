@@ -1,0 +1,7 @@
+[package]
+name = "ui_test_deps"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+secs = { path = ".." }

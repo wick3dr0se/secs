@@ -1,0 +1,14 @@
+error[E0277]: the trait bound `Option<&&str>: secs::query::Always` is not satisfied
+  --> tests/ui/opt_as_first.rs:14:11
+   |
+14 |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
+   |           ^^^^^ the trait `secs::query::Always` is not implemented for `Option<&&str>`
+   |
+   = help: the following other types implement trait `secs::query::Always`:
+             &T
+             &mut T
+   = note: required for `(Option<&&str>, &u32)` to implement `secs::query::Query<'_>`
+
+error: aborting due to 1 previous error
+
+For more information about this error, try `rustc --explain E0277`.

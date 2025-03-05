@@ -15,13 +15,23 @@ pub trait Query<'a>: Sized {
     );
 }
 
+/// A marker trait preventing `Option` from being used as the first field in a query tuple.
+/// This needs to be prevented, as it does not iterate over all entity ids, but only the ones
+/// within that list, always producing `Some`. In that case you can just leave off the `Option`.
+pub trait Always {}
+
+impl<T> Always for &T {}
+impl<T> Always for &mut T {}
+
 /// A helper that allows more copy paste
 pub trait SparseSetGetter<'a> {
     type Short<'b>;
     type Iter;
     fn get_set(world: &'a World) -> Option<Self::Iter>;
     fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>>;
-    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>;
+    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>
+    where
+        Self: Always;
 }
 
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
@@ -48,8 +58,11 @@ impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
     fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
         Some(T::get_entity(iter, entity))
     }
-    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
-        T::iter(iter).map(|(entity, thing)| (entity, Some(thing)))
+    fn iter(_iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>
+    where
+        Self: Always,
+    {
+        std::iter::once_with(|| unreachable!())
     }
 }
 
@@ -68,7 +81,7 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
     }
 }
 
-impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
+impl<'a, T: SparseSetGetter<'a> + Always + 'a> Query<'a> for (T,) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>,);
 
     #[track_caller]
@@ -84,7 +97,7 @@ impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
     }
 }
 
-impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for (T, U) {
+impl<'a, T: SparseSetGetter<'a> + Always + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for (T, U) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>);
 
     #[track_caller]
@@ -102,8 +115,12 @@ impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for
     }
 }
 
-impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a, V: SparseSetGetter<'a> + 'a>
-    Query<'a> for (T, U, V)
+impl<
+    'a,
+    T: SparseSetGetter<'a> + Always + 'a,
+    U: SparseSetGetter<'a> + 'a,
+    V: SparseSetGetter<'a> + 'a,
+> Query<'a> for (T, U, V)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>);
 
@@ -128,7 +145,7 @@ impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a, V: SparseSetG
 
 impl<
     'a,
-    T: SparseSetGetter<'a> + 'a,
+    T: SparseSetGetter<'a> + Always + 'a,
     U: SparseSetGetter<'a> + 'a,
     V: SparseSetGetter<'a> + 'a,
     W: SparseSetGetter<'a> + 'a,
@@ -162,7 +179,7 @@ impl<
 
 impl<
     'a,
-    T: SparseSetGetter<'a> + 'a,
+    T: SparseSetGetter<'a> + Always + 'a,
     U: SparseSetGetter<'a> + 'a,
     V: SparseSetGetter<'a> + 'a,
     W: SparseSetGetter<'a> + 'a,
