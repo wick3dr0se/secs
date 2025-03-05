@@ -1,7 +1,11 @@
+#[cfg(not(feature = "multithreaded"))]
+use elsa::FrozenMap;
+#[cfg(feature = "multithreaded")]
+use elsa::sync::FrozenMap;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
-use std::{any::TypeId, collections::HashMap};
+use std::any::TypeId;
 
 use bimap::BiMap;
 
@@ -127,11 +131,11 @@ impl<C: SendSync> Set for SparseSet<C> {
 
 #[derive(Default)]
 pub struct SparseSets {
-    sets: HashMap<TypeId, Box<RwLock<dyn Set>>>,
+    sets: FrozenMap<TypeId, Box<RwLock<dyn Set>>>,
 }
 
 impl SparseSets {
-    pub fn insert<C: SendSync>(&mut self, entity: Entity, component: C) {
+    pub fn insert<C: SendSync>(&self, entity: Entity, component: C) {
         self.sets.insert(
             TypeId::of::<C>(),
             Box::new(RwLock::new(SparseSet::new(entity, component))),
@@ -139,7 +143,7 @@ impl SparseSets {
     }
 
     pub fn remove(&mut self, entity: Entity) {
-        for set in self.sets.values() {
+        for set in self.sets.as_mut().values() {
             let Some(mut guard) = set.try_write() else {
                 panic!(
                     "Tried to access component mutably, but it is already being read or written to",
