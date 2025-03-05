@@ -5,11 +5,11 @@ L |     world.query::<(&u32, &str)>(|_, _| {});
   |           ^^^^^ doesn't have a size known at compile-time
   |
   = help: the trait `Sized` is not implemented for `str`
-  = help: the following other types implement trait `secs::query::SparseSetGetter<'a>`:
-            &'a C
-            &'a mut C
+  = help: the following other types implement trait `secs::query::SparseSetGetter`:
+            &C
+            &mut C
             Option<T>
-  = note: required for `&str` to implement `secs::query::SparseSetGetter<'_>`
+  = note: required for `&str` to implement `secs::query::SparseSetGetter`
 
 error[E0277]: `u32` cannot be used as a query component
   --> tests/ui/missing_ref.rs:10:11
@@ -17,11 +17,11 @@ error[E0277]: `u32` cannot be used as a query component
 LL |     world.query::<(u32, &&str)>(|_, _| {});
    |           ^^^^^
    |
-   = help: the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
+   = help: the trait `secs::query::SparseSetGetter` is not implemented for `u32`
    = note: only references and `Option`s of references can be components
-   = help: the following other types implement trait `secs::query::SparseSetGetter<'a>`:
-             &'a C
-             &'a mut C
+   = help: the following other types implement trait `secs::query::SparseSetGetter`:
+             &C
+             &mut C
              Option<T>
    = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
 
@@ -38,27 +38,6 @@ LL |     world.query::<(u32, &&str)>(|_, _| {});
              &mut T
    = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
 
-error[E0277]: `u32` cannot be used as a query component
-  --> tests/ui/missing_ref.rs:10:19
-   |
-LL |     world.query::<(u32, &&str)>(|_, _| {});
-   |           -----   ^^^^^^^^^^^^
-   |           |
-   |           required by a bound introduced by this call
-   |
-   = help: the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
-   = note: only references and `Option`s of references can be components
-   = help: the following other types implement trait `secs::query::SparseSetGetter<'a>`:
-             &'a C
-             &'a mut C
-             Option<T>
-   = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
-note: required by a bound in `secs::prelude::World::query`
-  --> $DIR/src/world.rs
-   |
-LL |     pub fn query<'a, Q: Query<'a>>(
-   |                         ^^^^^^^^^ required by this bound in `World::query`
-
-error: aborting due to 4 previous errors
+error: aborting due to 3 previous errors
 
 For more information about this error, try `rustc --explain E0277`.

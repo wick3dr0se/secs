@@ -39,7 +39,7 @@ impl<T> Always for &mut T {}
     label = "",
     note = "only references and `Option`s of references can be components"
 )]
-pub trait SparseSetGetter<'a> {
+pub trait SparseSetGetter {
     type Short<'b>;
     type Iter<'c>;
     fn get_set(world: &World) -> Option<Self::Iter<'_>>;
@@ -49,7 +49,7 @@ pub trait SparseSetGetter<'a> {
         Self: Always;
 }
 
-impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
+impl<C: 'static> SparseSetGetter for &C {
     type Short<'b> = &'b C;
     type Iter<'c> = MappedRwLockReadGuard<'c, SparseSet<C>>;
     #[track_caller]
@@ -64,7 +64,7 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
     }
 }
 
-impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
+impl<T: SparseSetGetter> SparseSetGetter for Option<T> {
     type Short<'b> = Option<T::Short<'b>>;
     type Iter<'c> = T::Iter<'c>;
     #[track_caller]
@@ -82,7 +82,7 @@ impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
     }
 }
 
-impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
+impl<C: 'static> SparseSetGetter for &mut C {
     type Short<'b> = &'b mut C;
     type Iter<'c> = MappedRwLockWriteGuard<'c, SparseSet<C>>;
     #[track_caller]
@@ -97,7 +97,7 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
     }
 }
 
-impl<'a, T: SparseSetGetter<'a> + Always + 'a> Query<'a> for (T,) {
+impl<'a, T: SparseSetGetter + Always> Query<'a> for (T,) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>,);
 
     #[track_caller]
@@ -113,7 +113,7 @@ impl<'a, T: SparseSetGetter<'a> + Always + 'a> Query<'a> for (T,) {
     }
 }
 
-impl<'a, T: SparseSetGetter<'a> + Always + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for (T, U) {
+impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter> Query<'a> for (T, U) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>);
 
     #[track_caller]
@@ -131,12 +131,8 @@ impl<'a, T: SparseSetGetter<'a> + Always + 'a, U: SparseSetGetter<'a> + 'a> Quer
     }
 }
 
-impl<
-    'a,
-    T: SparseSetGetter<'a> + Always + 'a,
-    U: SparseSetGetter<'a> + 'a,
-    V: SparseSetGetter<'a> + 'a,
-> Query<'a> for (T, U, V)
+impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Query<'a>
+    for (T, U, V)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>);
 
@@ -159,13 +155,8 @@ impl<
     }
 }
 
-impl<
-    'a,
-    T: SparseSetGetter<'a> + Always + 'a,
-    U: SparseSetGetter<'a> + 'a,
-    V: SparseSetGetter<'a> + 'a,
-    W: SparseSetGetter<'a> + 'a,
-> Query<'a> for (T, U, V, W)
+impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter>
+    Query<'a> for (T, U, V, W)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>, W::Short<'e>);
 
@@ -195,11 +186,11 @@ impl<
 
 impl<
     'a,
-    T: SparseSetGetter<'a> + Always + 'a,
-    U: SparseSetGetter<'a> + 'a,
-    V: SparseSetGetter<'a> + 'a,
-    W: SparseSetGetter<'a> + 'a,
-    X: SparseSetGetter<'a> + 'a,
+    T: SparseSetGetter + Always,
+    U: SparseSetGetter,
+    V: SparseSetGetter,
+    W: SparseSetGetter,
+    X: SparseSetGetter,
 > Query<'a> for (T, U, V, W, X)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (
