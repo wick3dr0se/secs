@@ -1,0 +1,4 @@
+
+thread 'main' panicked at $DIR/src/query.rs:
+Tried to access component `u32` mutably, but it was already being written to or read from
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
