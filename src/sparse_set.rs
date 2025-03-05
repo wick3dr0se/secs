@@ -44,8 +44,14 @@ impl<C> SparseSet<C> {
         }
     }
 
-    pub fn get(&self, entity: Entity) -> Option<usize> {
-        self.sparse.get_by_left(&entity).copied()
+    pub fn get(&self, entity: Entity) -> Option<&C> {
+        let &id = self.sparse.get_by_left(&entity)?;
+        Some(&self.dense[id])
+    }
+
+    pub fn get_mut(&mut self, entity: Entity) -> Option<&mut C> {
+        let &id = self.sparse.get_by_left(&entity)?;
+        Some(&mut self.dense[id])
     }
 }
 

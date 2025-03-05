@@ -53,3 +53,30 @@ fn despawn() {
     world.query::<(&u32, Option<&&str>)>(|_, (i, s)| results.push((*i, s.map(|s| *s))));
     assert_eq!(&results[..], &[(10, Some("foo"))]);
 }
+
+#[test]
+fn get() {
+    let mut world = World::default();
+
+    let id = world.spawn((1_u32,));
+    world.spawn((10_u32, "foo"));
+    world.despawn(id);
+
+    let mut results = vec![];
+    world.query::<(&u32,)>(|entity, (i,)| results.push((*i, world.get(entity).map(|s| *s))));
+    assert_eq!(&results[..], &[(10, Some("foo"))]);
+}
+
+#[test]
+#[should_panic(expected = "Tried to access component `u32`, but it was already being written to")]
+fn get_fail() {
+    let mut world = World::default();
+
+    let id = world.spawn((1_u32,));
+    world.spawn((10_u32, "foo"));
+    world.despawn(id);
+
+    let mut results = vec![];
+    world.query::<(&mut u32,)>(|entity, (i,)| results.push((*i, world.get(entity).map(|s| *s))));
+    assert_eq!(&results[..], &[(10, Some(0_u32))]);
+}
