@@ -88,8 +88,8 @@ impl World {
     }
 
     #[track_caller]
-    pub fn query<'a, Q: Query<'a>>(
-        &'a self,
+    pub fn query<Q: Query>(
+        &self,
         f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Q::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         Q::get_components(self, f)

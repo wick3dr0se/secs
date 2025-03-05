@@ -10,12 +10,12 @@ use crate::{
     label = "",
     note = "only tuples with 1 or up to 5 elements can be used as queries"
 )]
-pub trait Query<'a>: Sized {
+pub trait Query: Sized {
     type Short<'b, 'c, 'd, 'e, 'f>;
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     );
 }
@@ -97,12 +97,12 @@ impl<C: 'static> SparseSetGetter for &mut C {
     }
 }
 
-impl<'a, T: SparseSetGetter + Always> Query<'a> for (T,) {
+impl<T: SparseSetGetter + Always> Query for (T,) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>,);
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         if let Some(mut s1) = T::get_set(world) {
@@ -113,12 +113,12 @@ impl<'a, T: SparseSetGetter + Always> Query<'a> for (T,) {
     }
 }
 
-impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter> Query<'a> for (T, U) {
+impl<T: SparseSetGetter + Always, U: SparseSetGetter> Query for (T, U) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>);
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         if let (Some(mut s1), Some(mut s2)) = (T::get_set(world), U::get_set(world)) {
@@ -131,14 +131,12 @@ impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter> Query<'a> for (T, U) {
     }
 }
 
-impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Query<'a>
-    for (T, U, V)
-{
+impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Query for (T, U, V) {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>);
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3)) =
@@ -155,14 +153,14 @@ impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Qu
     }
 }
 
-impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter>
-    Query<'a> for (T, U, V, W)
+impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter> Query
+    for (T, U, V, W)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>, W::Short<'e>);
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4)) = (
@@ -185,13 +183,12 @@ impl<'a, T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W:
 }
 
 impl<
-    'a,
     T: SparseSetGetter + Always,
     U: SparseSetGetter,
     V: SparseSetGetter,
     W: SparseSetGetter,
     X: SparseSetGetter,
-> Query<'a> for (T, U, V, W, X)
+> Query for (T, U, V, W, X)
 {
     type Short<'b, 'c, 'd, 'e, 'f> = (
         T::Short<'b>,
@@ -203,7 +200,7 @@ impl<
 
     #[track_caller]
     fn get_components(
-        world: &'a World,
+        world: &World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4), Some(mut s5)) = (

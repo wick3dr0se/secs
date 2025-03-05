@@ -9,7 +9,7 @@ LL |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.ma
    = help: the following other types implement trait `secs::query::Always`:
              &T
              &mut T
-   = note: required for `(Option<&&str>, &u32)` to implement `secs::query::Query<'_>`
+   = note: required for `(Option<&&str>, &u32)` to implement `secs::query::Query`
 
 error: aborting due to 1 previous error
 

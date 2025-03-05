@@ -23,7 +23,7 @@ LL |     world.query::<(u32, &&str)>(|_, _| {});
              &C
              &mut C
              Option<T>
-   = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
+   = note: required for `(u32, &&str)` to implement `secs::query::Query`
 
 error[E0277]: `u32` cannot be the first element of a query
   --> tests/ui/missing_ref.rs:10:11
@@ -36,7 +36,7 @@ LL |     world.query::<(u32, &&str)>(|_, _| {});
    = help: the following other types implement trait `secs::query::Always`:
              &T
              &mut T
-   = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
+   = note: required for `(u32, &&str)` to implement `secs::query::Query`
 
 error: aborting due to 3 previous errors
 

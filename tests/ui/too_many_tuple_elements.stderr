@@ -4,9 +4,9 @@ error[E0277]: `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)` is not a vali
 L |     world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
   |           ^^^^^
   |
-  = help: the trait `secs::query::Query<'_>` is not implemented for `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)`
+  = help: the trait `secs::query::Query` is not implemented for `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)`
   = note: only tuples with 1 or up to 5 elements can be used as queries
-  = help: the following other types implement trait `secs::query::Query<'a>`:
+  = help: the following other types implement trait `secs::query::Query`:
             (T, U)
             (T, U, V)
             (T, U, V, W)
