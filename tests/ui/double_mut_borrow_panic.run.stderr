@@ -1,4 +1,4 @@
 
-thread 'main' panicked at $DIR/src/query.rs:
+thread 'main' panicked at tests/ui/double_mut_borrow_panic.rs:11:11:
 Tried to access component `u32` mutably, but it was already being written to or read from
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
