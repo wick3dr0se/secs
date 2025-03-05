@@ -18,6 +18,11 @@ pub trait Query<'a>: Sized {
 /// A marker trait preventing `Option` from being used as the first field in a query tuple.
 /// This needs to be prevented, as it does not iterate over all entity ids, but only the ones
 /// within that list, always producing `Some`. In that case you can just leave off the `Option`.
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be the first element of a query",
+    label = "",
+    note = "move another element to the front of the list"
+)]
 pub trait Always {}
 
 impl<T> Always for &T {}
