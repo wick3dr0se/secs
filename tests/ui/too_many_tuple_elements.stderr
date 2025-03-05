@@ -1,7 +1,7 @@
 error[E0277]: `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)` is not a valid query
  --> tests/ui/too_many_tuple_elements.rs:6:11
   |
-6 |     world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
+L |     world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
   |           ^^^^^
   |
   = help: the trait `secs::query::Query<'_>` is not implemented for `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)`

@@ -1,7 +1,7 @@
 error[E0277]: `Option<&&str>` cannot be the first element of a query
   --> tests/ui/opt_as_first.rs:14:11
    |
-14 |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
+LL |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
    |           ^^^^^
    |
    = help: the trait `secs::query::Always` is not implemented for `Option<&&str>`
