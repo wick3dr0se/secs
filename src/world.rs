@@ -48,7 +48,7 @@ impl World {
         self.sparse_sets.get_mut::<C>()
     }
 
-    pub(crate) fn attach_component<C: SendSync>(&mut self, entity: Entity, component: C) {
+    pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
@@ -67,11 +67,11 @@ impl World {
         self.sparse_sets.remove(entity);
     }
 
-    pub fn attach<C: AttachComponents>(&mut self, entity: Entity, components: C) {
+    pub fn attach<C: AttachComponents>(&self, entity: Entity, components: C) {
         components.attach_to_entity(self, entity);
     }
 
-    pub fn detach<C: 'static>(&mut self, entity: Entity) {
+    pub fn detach<C: 'static>(&self, entity: Entity) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.remove(entity)
         }
