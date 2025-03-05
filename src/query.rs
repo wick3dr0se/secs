@@ -62,12 +62,10 @@ impl<'a, T: SparseSetGetter<'a> + 'a> Query<'a> for (T,) {
         world: &'a World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
-        let Some(mut s1) = T::get_set(world) else {
-            return;
-        };
-
-        for (entity, c1) in T::iter(&mut s1) {
-            f(entity, (c1,));
+        if let Some(mut s1) = T::get_set(world) {
+            for (entity, c1) in T::iter(&mut s1) {
+                f(entity, (c1,));
+            }
         }
     }
 }
@@ -80,18 +78,12 @@ impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a> Query<'a> for
         world: &'a World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
-        let Some(mut s1) = T::get_set(world) else {
-            return;
-        };
-        let Some(mut s2) = U::get_set(world) else {
-            return;
-        };
-
-        for (entity, c1) in T::iter(&mut s1) {
-            let Some(c2) = U::get_entity(&mut s2, entity) else {
-                continue;
-            };
-            f(entity, (c1, c2));
+        if let (Some(mut s1), Some(mut s2)) = (T::get_set(world), U::get_set(world)) {
+            for (entity, c1) in T::iter(&mut s1) {
+                if let Some(c2) = U::get_entity(&mut s2, entity) {
+                    f(entity, (c1, c2));
+                }
+            }
         }
     }
 }
@@ -106,24 +98,16 @@ impl<'a, T: SparseSetGetter<'a> + 'a, U: SparseSetGetter<'a> + 'a, V: SparseSetG
         world: &'a World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
-        let Some(mut s1) = T::get_set(world) else {
-            return;
-        };
-        let Some(mut s2) = U::get_set(world) else {
-            return;
-        };
-        let Some(mut s3) = V::get_set(world) else {
-            return;
-        };
-
-        for (entity, c1) in T::iter(&mut s1) {
-            let Some(c2) = U::get_entity(&mut s2, entity) else {
-                continue;
-            };
-            let Some(c3) = V::get_entity(&mut s3, entity) else {
-                continue;
-            };
-            f(entity, (c1, c2, c3));
+        if let (Some(mut s1), Some(mut s2), Some(mut s3)) =
+            (T::get_set(world), U::get_set(world), V::get_set(world))
+        {
+            for (entity, c1) in T::iter(&mut s1) {
+                if let Some(c2) = U::get_entity(&mut s2, entity) {
+                    if let Some(c3) = V::get_entity(&mut s3, entity) {
+                        f(entity, (c1, c2, c3));
+                    }
+                }
+            }
         }
     }
 }
@@ -143,30 +127,21 @@ impl<
         world: &'a World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
-        let Some(mut s1) = T::get_set(world) else {
-            return;
-        };
-        let Some(mut s2) = U::get_set(world) else {
-            return;
-        };
-        let Some(mut s3) = V::get_set(world) else {
-            return;
-        };
-        let Some(mut s4) = W::get_set(world) else {
-            return;
-        };
-
-        for (entity, c1) in T::iter(&mut s1) {
-            let Some(c2) = U::get_entity(&mut s2, entity) else {
-                continue;
-            };
-            let Some(c3) = V::get_entity(&mut s3, entity) else {
-                continue;
-            };
-            let Some(c4) = W::get_entity(&mut s4, entity) else {
-                continue;
-            };
-            f(entity, (c1, c2, c3, c4));
+        if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4)) = (
+            T::get_set(world),
+            U::get_set(world),
+            V::get_set(world),
+            W::get_set(world),
+        ) {
+            for (entity, c1) in T::iter(&mut s1) {
+                if let Some(c2) = U::get_entity(&mut s2, entity) {
+                    if let Some(c3) = V::get_entity(&mut s3, entity) {
+                        if let Some(c4) = W::get_entity(&mut s4, entity) {
+                            f(entity, (c1, c2, c3, c4));
+                        }
+                    }
+                }
+            }
         }
     }
 }
@@ -193,36 +168,24 @@ impl<
         world: &'a World,
         mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
     ) {
-        let Some(mut s1) = T::get_set(world) else {
-            return;
-        };
-        let Some(mut s2) = U::get_set(world) else {
-            return;
-        };
-        let Some(mut s3) = V::get_set(world) else {
-            return;
-        };
-        let Some(mut s4) = W::get_set(world) else {
-            return;
-        };
-        let Some(mut s5) = X::get_set(world) else {
-            return;
-        };
-
-        for (entity, c1) in T::iter(&mut s1) {
-            let Some(c2) = U::get_entity(&mut s2, entity) else {
-                continue;
-            };
-            let Some(c3) = V::get_entity(&mut s3, entity) else {
-                continue;
-            };
-            let Some(c4) = W::get_entity(&mut s4, entity) else {
-                continue;
-            };
-            let Some(c5) = X::get_entity(&mut s5, entity) else {
-                continue;
-            };
-            f(entity, (c1, c2, c3, c4, c5));
+        if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4), Some(mut s5)) = (
+            T::get_set(world),
+            U::get_set(world),
+            V::get_set(world),
+            W::get_set(world),
+            X::get_set(world),
+        ) {
+            for (entity, c1) in T::iter(&mut s1) {
+                if let Some(c2) = U::get_entity(&mut s2, entity) {
+                    if let Some(c3) = V::get_entity(&mut s3, entity) {
+                        if let Some(c4) = W::get_entity(&mut s4, entity) {
+                            if let Some(c5) = X::get_entity(&mut s5, entity) {
+                                f(entity, (c1, c2, c3, c4, c5));
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
