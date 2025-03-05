@@ -41,40 +41,40 @@ impl<T> Always for &mut T {}
 )]
 pub trait SparseSetGetter<'a> {
     type Short<'b>;
-    type Iter;
-    fn get_set(world: &'a World) -> Option<Self::Iter>;
-    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>>;
-    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>
+    type Iter<'c>;
+    fn get_set(world: &World) -> Option<Self::Iter<'_>>;
+    fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>>;
+    fn iter<'b>(iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)>
     where
         Self: Always;
 }
 
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
     type Short<'b> = &'b C;
-    type Iter = MappedRwLockReadGuard<'a, SparseSet<C>>;
+    type Iter<'c> = MappedRwLockReadGuard<'c, SparseSet<C>>;
     #[track_caller]
-    fn get_set(world: &'a World) -> Option<Self::Iter> {
+    fn get_set(world: &World) -> Option<Self::Iter<'_>> {
         world.get_sparse_set()
     }
-    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+    fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>> {
         iter.get(entity)
     }
-    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
+    fn iter<'b>(iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
         (&**iter).into_iter()
     }
 }
 
 impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
     type Short<'b> = Option<T::Short<'b>>;
-    type Iter = T::Iter;
+    type Iter<'c> = T::Iter<'c>;
     #[track_caller]
-    fn get_set(world: &'a World) -> Option<Self::Iter> {
+    fn get_set(world: &World) -> Option<Self::Iter<'_>> {
         T::get_set(world)
     }
-    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+    fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>> {
         Some(T::get_entity(iter, entity))
     }
-    fn iter(_iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)>
+    fn iter<'b>(_iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)>
     where
         Self: Always,
     {
@@ -84,15 +84,15 @@ impl<'a, T: SparseSetGetter<'a>> SparseSetGetter<'a> for Option<T> {
 
 impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
     type Short<'b> = &'b mut C;
-    type Iter = MappedRwLockWriteGuard<'a, SparseSet<C>>;
+    type Iter<'c> = MappedRwLockWriteGuard<'c, SparseSet<C>>;
     #[track_caller]
-    fn get_set(world: &'a World) -> Option<Self::Iter> {
+    fn get_set(world: &World) -> Option<Self::Iter<'_>> {
         world.get_sparse_set_mut()
     }
-    fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
+    fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>> {
         iter.get_mut(entity)
     }
-    fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
+    fn iter<'b>(iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
         (&mut **iter).into_iter()
     }
 }
