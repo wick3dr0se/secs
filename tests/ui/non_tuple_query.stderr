@@ -1,7 +1,7 @@
 error[E0277]: `u32` is not a valid query
  --> tests/ui/non_tuple_query.rs:6:11
   |
-6 |     world.query::<u32>(|_, _| {});
+L |     world.query::<u32>(|_, _| {});
   |           ^^^^^
   |
   = help: the trait `secs::query::Query<'_>` is not implemented for `u32`

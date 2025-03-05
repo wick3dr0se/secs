@@ -1,7 +1,7 @@
 error[E0277]: `()` is not a valid query
  --> tests/ui/empty_tuple.rs:6:11
   |
-6 |     world.query::<()>(|_, ()| {});
+L |     world.query::<()>(|_, ()| {});
   |           ^^^^^
   |
   = help: the trait `secs::query::Query<'_>` is not implemented for `()`
