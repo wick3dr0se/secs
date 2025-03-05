@@ -9,6 +9,5 @@ fn optional_components() {
 
     world.query::<(u32, &&str)>(|_, _| {});
     //~^ ERROR: `u32` cannot be used as a query component
-    //~| ERROR: `u32` cannot be used as a query component
     //~| ERROR: `u32` cannot be the first element of a query
 }
