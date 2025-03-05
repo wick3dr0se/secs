@@ -29,6 +29,11 @@ impl<T> Always for &T {}
 impl<T> Always for &mut T {}
 
 /// A helper that allows more copy paste
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` cannot be used as a query component",
+    label = "",
+    note = "only references and `Option`s of references can be components"
+)]
 pub trait SparseSetGetter<'a> {
     type Short<'b>;
     type Iter;

@@ -11,12 +11,14 @@ error[E0277]: the size for values of type `str` cannot be known at compilation t
             Option<T>
   = note: required for `&str` to implement `secs::query::SparseSetGetter<'_>`
 
-error[E0277]: the trait bound `u32: secs::query::SparseSetGetter<'_>` is not satisfied
+error[E0277]: `u32` cannot be used as a query component
   --> tests/ui/missing_ref.rs:10:11
    |
 10 |     world.query::<(u32, &&str)>(|_, _| {});
-   |           ^^^^^ the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
+   |           ^^^^^
    |
+   = help: the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
+   = note: only references and `Option`s of references can be components
    = help: the following other types implement trait `secs::query::SparseSetGetter<'a>`:
              &'a C
              &'a mut C
@@ -36,14 +38,16 @@ error[E0277]: `u32` cannot be the first element of a query
              &mut T
    = note: required for `(u32, &&str)` to implement `secs::query::Query<'_>`
 
-error[E0277]: the trait bound `u32: secs::query::SparseSetGetter<'_>` is not satisfied
+error[E0277]: `u32` cannot be used as a query component
   --> tests/ui/missing_ref.rs:10:19
    |
 10 |     world.query::<(u32, &&str)>(|_, _| {});
-   |           -----   ^^^^^^^^^^^^ the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
+   |           -----   ^^^^^^^^^^^^
    |           |
    |           required by a bound introduced by this call
    |
+   = help: the trait `secs::query::SparseSetGetter<'_>` is not implemented for `u32`
+   = note: only references and `Option`s of references can be components
    = help: the following other types implement trait `secs::query::SparseSetGetter<'a>`:
              &'a C
              &'a mut C
