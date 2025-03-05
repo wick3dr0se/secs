@@ -56,8 +56,7 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a C {
         world.get_sparse_set()
     }
     fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
-        let id = iter.get(entity)?;
-        Some(&iter.dense[id])
+        iter.get(entity)
     }
     fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
         (&**iter).into_iter()
@@ -88,8 +87,7 @@ impl<'a, C: 'static> SparseSetGetter<'a> for &'a mut C {
         world.get_sparse_set_mut()
     }
     fn get_entity(iter: &mut Self::Iter, entity: Entity) -> Option<Self::Short<'_>> {
-        let id = iter.get(entity)?;
-        Some(&mut iter.dense[id])
+        iter.get_mut(entity)
     }
     fn iter(iter: &mut Self::Iter) -> impl Iterator<Item = (Entity, Self::Short<'_>)> {
         (&mut **iter).into_iter()

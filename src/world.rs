@@ -77,6 +77,16 @@ impl World {
         }
     }
 
+    pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
+        let set = self.sparse_sets.get::<C>()?;
+        MappedRwLockReadGuard::try_map(set, |set| set.get(entity)).ok()
+    }
+
+    pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
+        let set = self.sparse_sets.get_mut::<C>()?;
+        MappedRwLockWriteGuard::try_map(set, |set| set.get_mut(entity)).ok()
+    }
+
     #[track_caller]
     pub fn query<'a, Q: Query<'a>>(
         &'a self,
