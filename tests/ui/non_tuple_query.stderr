@@ -1,9 +1,11 @@
-error[E0277]: the trait bound `u32: secs::query::Query<'_>` is not satisfied
+error[E0277]: `u32` is not a valid query
  --> tests/ui/non_tuple_query.rs:6:11
   |
 6 |     world.query::<u32>(|_, _| {});
-  |           ^^^^^ the trait `secs::query::Query<'_>` is not implemented for `u32`
+  |           ^^^^^
   |
+  = help: the trait `secs::query::Query<'_>` is not implemented for `u32`
+  = note: only tuples with 1 or up to 5 elements can be used as queries
   = help: the following other types implement trait `secs::query::Query<'a>`:
             (T, U)
             (T, U, V)

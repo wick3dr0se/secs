@@ -1,9 +1,11 @@
-error[E0277]: the trait bound `(): secs::query::Query<'_>` is not satisfied
+error[E0277]: `()` is not a valid query
  --> tests/ui/empty_tuple.rs:6:11
   |
 6 |     world.query::<()>(|_, ()| {});
-  |           ^^^^^ the trait `secs::query::Query<'_>` is not implemented for `()`
+  |           ^^^^^
   |
+  = help: the trait `secs::query::Query<'_>` is not implemented for `()`
+  = note: only tuples with 1 or up to 5 elements can be used as queries
   = help: the following other types implement trait `secs::query::Query<'a>`:
             (T, U)
             (T, U, V)

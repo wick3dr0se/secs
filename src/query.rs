@@ -5,6 +5,11 @@ use crate::{
     world::{Entity, World},
 };
 
+#[diagnostic::on_unimplemented(
+    message = "`{Self}` is not a valid query",
+    label = "",
+    note = "only tuples with 1 or up to 5 elements can be used as queries"
+)]
 pub trait Query<'a>: Sized {
     type Short<'b, 'c, 'd, 'e, 'f>;
 
