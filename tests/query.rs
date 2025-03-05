@@ -30,7 +30,7 @@ fn optional_components() {
     assert_eq!(&results[..], &[(1, None), (10, Some("foo"))]);
 
     let mut results = vec![];
-    world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
+    world.query::<(&&str, &u32)>(|_, (s, i)| results.push((*i, *s)));
     results.sort();
-    assert_eq!(&results[..], &[(10, Some("foo"))]);
+    assert_eq!(&results[..], &[(10, "foo")]);
 }

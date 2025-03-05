@@ -14,3 +14,8 @@ multithreaded = ["rayon"]
 
 [dev-dependencies]
 macroquad = "0.4.13"
+ui_test = "0.29.1"
+
+[[test]]
+name = "ui"
+harness = false
