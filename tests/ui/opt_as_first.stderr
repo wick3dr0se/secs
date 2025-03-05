@@ -1,9 +1,11 @@
-error[E0277]: the trait bound `Option<&&str>: secs::query::Always` is not satisfied
+error[E0277]: `Option<&&str>` cannot be the first element of a query
   --> tests/ui/opt_as_first.rs:14:11
    |
 14 |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
-   |           ^^^^^ the trait `secs::query::Always` is not implemented for `Option<&&str>`
+   |           ^^^^^
    |
+   = help: the trait `secs::query::Always` is not implemented for `Option<&&str>`
+   = note: move another element to the front of the list
    = help: the following other types implement trait `secs::query::Always`:
              &T
              &mut T
