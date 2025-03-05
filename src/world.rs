@@ -36,6 +36,18 @@ pub struct World {
 }
 
 impl World {
+    #[track_caller]
+    pub(crate) fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
+        self.sparse_sets.get::<C>()
+    }
+
+    #[track_caller]
+    pub(crate) fn get_sparse_set_mut<C: 'static>(
+        &self,
+    ) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
+        self.sparse_sets.get_mut::<C>()
+    }
+
     pub(crate) fn attach_component<C: SendSync>(&mut self, entity: Entity, component: C) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
@@ -108,22 +120,5 @@ impl World {
         // Shallow clone, everything is reference counted inside
         let scheduler = self.scheduler.clone();
         scheduler.run(self);
-    }
-}
-
-pub trait WorldQuery {
-    fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>>;
-    fn get_sparse_set_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>>;
-}
-
-impl WorldQuery for World {
-    #[track_caller]
-    fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
-        self.sparse_sets.get::<C>()
-    }
-
-    #[track_caller]
-    fn get_sparse_set_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
-        self.sparse_sets.get_mut::<C>()
     }
 }

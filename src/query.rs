@@ -2,7 +2,7 @@ use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 
 use crate::{
     sparse_set::SparseSet,
-    world::{Entity, World, WorldQuery},
+    world::{Entity, World},
 };
 
 pub trait Query<'a>: Sized {
