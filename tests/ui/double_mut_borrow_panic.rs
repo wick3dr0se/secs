@@ -1,0 +1,12 @@
+//@run:101
+
+use secs::prelude::*;
+
+fn main() {
+    let mut world = World::default();
+
+    world.spawn((1_u32,));
+    world.spawn((10_u32,));
+
+    world.query::<(&mut u32, &mut u32)>(|_, (_, _)| {});
+}
