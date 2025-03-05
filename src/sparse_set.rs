@@ -127,14 +127,14 @@ impl<C: SendSync> Set for SparseSet<C> {
 
 #[derive(Default)]
 pub struct SparseSets {
-    sets: HashMap<TypeId, RwLock<Box<dyn Set>>>,
+    sets: HashMap<TypeId, Box<RwLock<dyn Set>>>,
 }
 
 impl SparseSets {
     pub fn insert<C: SendSync>(&mut self, entity: Entity, component: C) {
         self.sets.insert(
             TypeId::of::<C>(),
-            RwLock::new(Box::new(SparseSet::new(entity, component))),
+            Box::new(RwLock::new(SparseSet::new(entity, component))),
         );
     }
 
@@ -159,7 +159,7 @@ impl SparseSets {
             )
         };
         Some(RwLockReadGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *const dyn Set = dynbox.as_ref();
+            let dynthing: *const dyn Set = dynbox;
             &*dynthing.cast::<SparseSet<C>>()
         }))
     }
@@ -174,7 +174,7 @@ impl SparseSets {
             )
         };
         Some(RwLockWriteGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *mut dyn Set = dynbox.as_mut();
+            let dynthing: *mut dyn Set = dynbox;
             &mut *dynthing.cast::<SparseSet<C>>()
         }))
     }
