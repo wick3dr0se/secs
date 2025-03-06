@@ -9,7 +9,7 @@ use thunderdome::{Arena, Index};
 use crate::{
     components::AttachComponents,
     query::Query,
-    scheduler::{ExecutionMode, MutSystem, Scheduler, System},
+    scheduler::{MutSystem, Scheduler, System},
     sparse_set::{SparseSet, SparseSets},
 };
 
@@ -115,8 +115,13 @@ impl World {
         self.resources.remove(&TypeId::of::<R>());
     }
 
-    pub fn add_system(&mut self, system: System, mode: ExecutionMode) {
-        self.scheduler.register(system, mode);
+    #[cfg(feature = "multithreaded")]
+    pub fn add_parallel_system(&mut self, system: System) {
+        self.scheduler.register_parallel(system);
+    }
+
+    pub fn add_system(&mut self, system: System) {
+        self.scheduler.register(system);
     }
 
     pub fn add_mut_system(&mut self, system: MutSystem) {

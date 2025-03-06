@@ -12,7 +12,7 @@ fn remove() {
     // While this is bogus in many cases, it's the only way to catch the rare cases where
     // it's an issue. So we do this provenance preserving deduplication by eagerly creating a pointer.
     let boom = boom as fn(&World);
-    world.add_system(boom, ExecutionMode::Serial);
+    world.add_system(boom);
     assert!(std::panic::catch_unwind(AssertUnwindSafe(|| world.run_systems())).is_err());
     world.remove_system(boom);
     world.run_systems();
@@ -37,7 +37,7 @@ fn remove_within() {
     }
 
     world.add_mut_system(defuse);
-    world.add_system(boom, ExecutionMode::Serial);
+    world.add_system(boom);
     world.run_systems();
 }
 
