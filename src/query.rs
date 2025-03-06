@@ -60,7 +60,7 @@ impl<C: 'static> SparseSetGetter for &C {
         iter.get(entity)
     }
     fn iter<'b>(iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
-        (&**iter).into_iter()
+        iter.iter()
     }
 }
 
@@ -93,7 +93,7 @@ impl<C: 'static> SparseSetGetter for &mut C {
         iter.get_mut(entity)
     }
     fn iter<'b>(iter: &'b mut Self::Iter<'_>) -> impl Iterator<Item = (Entity, Self::Short<'b>)> {
-        (&mut **iter).into_iter()
+        iter.iter_mut()
     }
 }
 
