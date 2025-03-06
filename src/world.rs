@@ -1,10 +1,11 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
+    num::NonZeroU64,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
-use thunderdome::{Arena, Index};
 
 use crate::{
     components::AttachComponents,
@@ -13,7 +14,8 @@ use crate::{
     sparse_set::{SparseSet, SparseSets},
 };
 
-pub type Entity = Index;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Entity(NonZeroU64);
 
 #[cfg(feature = "multithreaded")]
 pub trait SendSync: Any + Send + Sync {}
@@ -26,7 +28,7 @@ impl<T: ?Sized + Any> SendSync for T {}
 
 #[derive(Default)]
 pub struct World {
-    entities: Arena<()>,
+    entities: AtomicU64,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
@@ -57,13 +59,13 @@ impl World {
     }
 
     pub fn spawn<C: AttachComponents>(&mut self, components: C) -> Entity {
-        let entity = self.entities.insert(());
+        let entity = self.entities.fetch_add(1, Ordering::Relaxed);
+        let entity = Entity(NonZeroU64::new(entity + 1).unwrap());
         components.attach_to_entity(self, entity);
         entity
     }
 
     pub fn despawn(&mut self, entity: Entity) {
-        self.entities.remove(entity);
         self.sparse_sets.remove(entity);
     }
 

@@ -744,7 +744,6 @@ dependencies = [
  "macroquad",
  "parking_lot",
  "rayon",
- "thunderdome",
  "ui_test",
 ]
 
@@ -881,12 +880,6 @@ dependencies = [
  "cfg-if",
  "once_cell",
 ]
-
-[[package]]
-name = "thunderdome"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "92e170f93360bf9ae6fe3c31116bbf27adb1d054cedd6bc3d7857e34f2d98d0b"
 
 [[package]]
 name = "tracing"
