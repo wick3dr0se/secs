@@ -8,13 +8,6 @@ use crate::world::World;
 pub type System = fn(&World);
 pub type MutSystem = fn(&mut World);
 
-#[derive(PartialEq)]
-pub enum ExecutionMode {
-    #[cfg(feature = "multithreaded")]
-    Parallel,
-    Serial,
-}
-
 #[derive(Default, Clone)]
 pub struct Scheduler {
     #[cfg(feature = "multithreaded")]
@@ -27,17 +20,17 @@ impl Scheduler {
         self.systems.write().unwrap().push(system)
     }
 
-    pub(crate) fn register(&mut self, system: System, mode: ExecutionMode) {
-        match mode {
-            // SAFETY: a `fn(&World)` is always safe to use as a `fn(&mut World)`, Rust just doesn't support that safely.
-            ExecutionMode::Serial => self
-                .systems
-                .write()
-                .unwrap()
-                .push(unsafe { std::mem::transmute::<System, MutSystem>(system) }),
-            #[cfg(feature = "multithreaded")]
-            ExecutionMode::Parallel => self.parallel_systems.write().unwrap().push(system),
-        }
+    #[cfg(feature = "multithreaded")]
+    pub(crate) fn register_parallel(&mut self, system: System) {
+        self.parallel_systems.write().unwrap().push(system)
+    }
+
+    pub(crate) fn register(&mut self, system: System) {
+        // SAFETY: a `fn(&World)` is always safe to use as a `fn(&mut World)`, Rust just doesn't support that safely.
+        self.systems
+            .write()
+            .unwrap()
+            .push(unsafe { std::mem::transmute::<System, MutSystem>(system) })
     }
 
     pub(crate) fn deregister(&mut self, system: System) {
