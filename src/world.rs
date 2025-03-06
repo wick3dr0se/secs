@@ -50,6 +50,7 @@ impl World {
         self.sparse_sets.get_mut::<C>()
     }
 
+    #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
@@ -58,6 +59,7 @@ impl World {
         }
     }
 
+    #[track_caller]
     pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
         let entity = self.entities.fetch_add(1, Ordering::Relaxed);
         let entity = Entity(NonZeroU64::new(entity + 1).unwrap());
@@ -65,25 +67,30 @@ impl World {
         entity
     }
 
+    #[track_caller]
     pub fn despawn(&mut self, entity: Entity) {
         self.sparse_sets.remove(entity);
     }
 
+    #[track_caller]
     pub fn attach<C: AttachComponents>(&self, entity: Entity, components: C) {
         components.attach_to_entity(self, entity);
     }
 
+    #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.remove(entity)
         }
     }
 
+    #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         let set = self.sparse_sets.get::<C>()?;
         MappedRwLockReadGuard::try_map(set, |set| set.get(entity)).ok()
     }
 
+    #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         let set = self.sparse_sets.get_mut::<C>()?;
         MappedRwLockWriteGuard::try_map(set, |set| set.get_mut(entity)).ok()

@@ -93,6 +93,7 @@ impl SparseSets {
         );
     }
 
+    #[track_caller]
     pub fn remove(&mut self, entity: Entity) {
         for set in self.sets.as_mut().values() {
             let Some(mut guard) = set.try_write() else {
