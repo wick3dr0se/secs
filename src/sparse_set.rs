@@ -5,62 +5,65 @@ use elsa::sync::FrozenMap;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
-use std::any::TypeId;
-
-use bimap::BiMap;
+use std::{any::TypeId, collections::HashMap};
 
 use crate::world::{Entity, SendSync};
 
 pub struct SparseSet<C> {
-    pub sparse: BiMap<Entity, usize>,
+    pub sparse: HashMap<Entity, usize>,
     pub dense: Vec<C>,
+    pub ids: Vec<Entity>,
 }
 
 impl<C> SparseSet<C> {
     pub fn new(entity: Entity, component: C) -> Self {
-        let mut sparse = BiMap::new();
+        let mut sparse = HashMap::new();
         sparse.insert(entity, 0);
 
         Self {
             sparse,
             dense: vec![component],
+            ids: vec![entity],
         }
     }
 
     pub fn insert(&mut self, entity: Entity, component: C) {
+        self.sparse.insert(entity, self.dense.len());
         self.dense.push(component);
-        self.sparse.insert(entity, self.dense.len() - 1);
+        self.ids.push(entity);
     }
 
     pub fn remove(&mut self, entity: Entity) {
-        if let Some((_entity, idx)) = self.sparse.remove_by_left(&entity) {
+        if let Some(idx) = self.sparse.remove(&entity) {
             let last = self.dense.len() - 1;
 
             if idx != last {
                 self.dense.swap(idx, last);
+                let entity = *self.ids.last().unwrap();
+                self.ids.swap(idx, last);
 
-                if let Some(&swapped_entity) = self.sparse.get_by_right(&last) {
-                    self.sparse.insert(swapped_entity, idx);
-                }
+                let _prev = self.sparse.insert(entity, idx);
+                debug_assert_eq!(_prev, Some(last));
             }
 
             self.dense.pop();
+            self.ids.pop();
         }
     }
 
     pub fn get(&self, entity: Entity) -> Option<&C> {
-        let &id = self.sparse.get_by_left(&entity)?;
+        let &id = self.sparse.get(&entity)?;
         Some(&self.dense[id])
     }
 
     pub fn get_mut(&mut self, entity: Entity) -> Option<&mut C> {
-        let &id = self.sparse.get_by_left(&entity)?;
+        let &id = self.sparse.get(&entity)?;
         Some(&mut self.dense[id])
     }
 }
 
 pub struct SparseSetIter<'a, C> {
-    iter: bimap::hash::Iter<'a, Entity, usize>,
+    iter: std::collections::hash_map::Iter<'a, Entity, usize>,
     dense: &'a [C],
 }
 
@@ -88,7 +91,7 @@ impl<'a, C> IntoIterator for &'a SparseSet<C> {
 }
 
 pub struct SparseSetIterMut<'a, C> {
-    iter: bimap::hash::Iter<'a, Entity, usize>,
+    iter: std::collections::hash_map::Iter<'a, Entity, usize>,
     dense: &'a mut [C],
 }
 
