@@ -1,7 +1,7 @@
 use secs::prelude::*;
 
 fn optional_components() {
-    let mut world = World::default();
+    let world = World::default();
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));

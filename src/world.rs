@@ -58,7 +58,7 @@ impl World {
         }
     }
 
-    pub fn spawn<C: AttachComponents>(&mut self, components: C) -> Entity {
+    pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
         let entity = self.entities.fetch_add(1, Ordering::Relaxed);
         let entity = Entity(NonZeroU64::new(entity + 1).unwrap());
         components.attach_to_entity(self, entity);

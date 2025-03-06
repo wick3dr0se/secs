@@ -5,7 +5,7 @@ use secs::prelude::*;
     expected = "Tried to access component `u32` mutably, but it was already being written to or read from"
 )]
 fn aliasing_mutation() {
-    let mut world = World::default();
+    let world = World::default();
 
     world.spawn((1_u32,));
     world.spawn((10_u32,));
@@ -20,7 +20,7 @@ fn aliasing_mutation() {
 
 #[test]
 fn optional_components() {
-    let mut world = World::default();
+    let world = World::default();
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
