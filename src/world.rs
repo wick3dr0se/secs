@@ -89,15 +89,14 @@ impl World {
     }
 
     #[track_caller]
-    pub fn detach<C: 'static>(&self, entity: Entity) {
+    pub fn detach<C: 'static>(&self, entity: Entity) -> Option<C> {
         assert!(
             !self.dead_entities.contains(&entity),
             "Detaching `{}` from despawned entity",
             std::any::type_name::<C>(),
         );
-        if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
-            set.remove(entity)
-        }
+        let mut set = self.sparse_sets.get_mut::<C>()?;
+        set.remove(entity)
     }
 
     #[track_caller]
@@ -163,8 +162,13 @@ impl World {
             .and_then(|r| r.downcast_mut())
     }
 
-    pub fn remove_resource<R: 'static>(&mut self) {
-        self.resources.remove(&TypeId::of::<R>());
+    pub fn remove_resource<R: 'static>(&mut self) -> Option<Box<R>> {
+        Some(
+            self.resources
+                .remove(&TypeId::of::<R>())?
+                .downcast()
+                .unwrap(),
+        )
     }
 
     #[cfg(feature = "multithreaded")]
