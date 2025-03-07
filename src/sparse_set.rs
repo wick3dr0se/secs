@@ -33,22 +33,21 @@ impl<C> SparseSet<C> {
         self.ids.push(entity);
     }
 
-    pub fn remove(&mut self, entity: Entity) {
-        if let Some(idx) = self.sparse.remove(&entity) {
-            let last = self.dense.len() - 1;
+    pub fn remove(&mut self, entity: Entity) -> Option<C> {
+        let idx = self.sparse.remove(&entity)?;
+        let last = self.dense.len() - 1;
 
-            if idx != last {
-                self.dense.swap(idx, last);
-                let entity = *self.ids.last().unwrap();
-                self.ids.swap(idx, last);
+        if idx != last {
+            self.dense.swap(idx, last);
+            let entity = *self.ids.last().unwrap();
+            self.ids.swap(idx, last);
 
-                let _prev = self.sparse.insert(entity, idx);
-                debug_assert_eq!(_prev, Some(last));
-            }
-
-            self.dense.pop();
-            self.ids.pop();
+            let _prev = self.sparse.insert(entity, idx);
+            debug_assert_eq!(_prev, Some(last));
         }
+
+        self.ids.pop();
+        self.dense.pop()
     }
 
     pub fn get(&self, entity: Entity) -> Option<&C> {
