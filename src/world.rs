@@ -14,6 +14,7 @@ use crate::{
     sparse_set::{SparseSet, SparseSets},
 };
 
+/// An opaque id for an entity.
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Entity(NonZeroU64);
 
@@ -26,6 +27,9 @@ impl<T: ?Sized + Send + Sync + Any> SendSync for T {}
 #[cfg(not(feature = "multithreaded"))]
 impl<T: ?Sized + Any> SendSync for T {}
 
+/// The main entry point to this [crate].
+///
+/// Invoke [Self::spawn] to add entities and [Self::query] to process them.
 #[derive(Default)]
 pub struct World {
     entities: AtomicU64,
@@ -65,6 +69,14 @@ impl World {
         }
     }
 
+    /// Create a new entity and immediately initialize it with the given components.
+    ///
+    /// ```rust
+    /// # use secs::prelude::*;
+    /// # let world = World::default();
+    /// world.spawn(("player", 42));
+    /// world.spawn(("animal", 12, 5.3))
+    /// ```
     #[track_caller]
     pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
         let entity = self.entities.fetch_add(1, Ordering::Relaxed);
@@ -73,21 +85,31 @@ impl World {
         entity
     }
 
+    /// Detach all components from an entity and drop them.
+    /// If you to extract specific components, call [Self::detach] first.
     #[track_caller]
-    pub fn despawn(&mut self, entity: Entity) {
+    pub fn detach_all(&mut self, entity: Entity) {
         assert!(
             !self.dead_entities.contains(&entity),
             "Removing an already removed entity"
         );
         self.sparse_sets.remove(entity);
+    }
+
+    /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
+    #[track_caller]
+    pub fn despawn(&mut self, entity: Entity) {
+        self.detach_all(entity);
         self.dead_entities.insert(entity);
     }
 
+    /// Attach multiple components to an entity at once.
     #[track_caller]
     pub fn attach<C: AttachComponents>(&self, entity: Entity, components: C) {
         components.attach_to_entity(self, entity);
     }
 
+    /// Detach a component and return it if the entity had that component.
     #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) -> Option<C> {
         assert!(
@@ -99,6 +121,11 @@ impl World {
         set.remove(entity)
     }
 
+    /// Immutable access to an entity's component.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the component is already used mutably either by a [Self::query] or [Self::get_mut].
     #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         assert!(
@@ -110,6 +137,11 @@ impl World {
         MappedRwLockReadGuard::try_map(set, |set| set.get(entity)).ok()
     }
 
+    /// Mutable access to an entity's component.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if the component is already used either by a [Self::query], [Self::get_mut], or [Self::get].
     #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         assert!(
@@ -121,6 +153,19 @@ impl World {
         MappedRwLockWriteGuard::try_map(set, |set| set.get_mut(entity)).ok()
     }
 
+    /// Invokes a closure for every entity that has the given components.
+    ///
+    /// The first component is the one that will be iterated over, so sorting the components to have
+    /// the rarest one first is more performant than iterating over a common component and getting
+    /// the entities discarded because a later component does not exist for it.
+    ///
+    /// ```rust
+    /// # use secs::prelude::*;
+    /// # let world = World::default();
+    /// world.query::<(String, u32)>(|entity_id, (s, u)| {
+    ///     println!("{s}: {u}");
+    /// });
+    /// ```
     #[track_caller]
     pub fn query<Q: Query>(
         &self,
@@ -129,6 +174,8 @@ impl World {
         Q::get_components(self, f)
     }
 
+    /// Same as [Self::query], but only for one component and returns a boolean.
+    /// If the boolean is `false` the component will be dropped.
     pub fn query_retain<C: 'static>(&self, mut f: impl for<'a> FnMut(Entity, &'a mut C) -> bool) {
         let Some(mut set) = self.sparse_sets.get_mut::<C>() else {
             return;
@@ -146,6 +193,7 @@ impl World {
         }
     }
 
+    /// Register a global resource that can be accessed via [Self::get_resource] or [Self::get_resource_mut].
     pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
         self.resources.insert(TypeId::of::<R>(), Box::new(res));
     }
@@ -162,6 +210,7 @@ impl World {
             .and_then(|r| r.downcast_mut())
     }
 
+    /// Remove a global resource and get it back in an owned manner.
     pub fn remove_resource<R: 'static>(&mut self) -> Option<Box<R>> {
         Some(
             self.resources
@@ -171,27 +220,35 @@ impl World {
         )
     }
 
+    /// Add a system that will run in parallel on threads with all
+    /// other parallel systems.
     #[cfg(feature = "multithreaded")]
     pub fn add_parallel_system(&mut self, system: System) {
         self.scheduler.register_parallel(system);
     }
 
+    /// Add a system that will run after all systems that were added before it.
     pub fn add_system(&mut self, system: System) {
         self.scheduler.register(system);
     }
 
+    /// Same as [Self::add_system], but the system has mutable access to the [World].
     pub fn add_mut_system(&mut self, system: MutSystem) {
         self.scheduler.register_mut(system);
     }
 
+    /// Remove a system. Note that due to how compilers work this may not
+    /// work if the system is declared in another crate.
     pub fn remove_system(&mut self, system: System) {
         self.scheduler.deregister(system);
     }
 
+    /// Same as [Self::remove_system].
     pub fn remove_mut_system(&mut self, system: MutSystem) {
         self.scheduler.deregister_mut(system);
     }
 
+    /// Run all systems once.
     pub fn run_systems(&mut self) {
         // Shallow clone, everything is reference counted inside
         let scheduler = self.scheduler.clone();
