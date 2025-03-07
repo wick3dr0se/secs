@@ -9,7 +9,9 @@ fn detach_related_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|entity, (_,)| world.detach::<u32>(entity));
+    world.query::<(&u32,)>(|entity, (_,)| {
+        world.detach::<u32>(entity);
+    });
 }
 
 #[test]
@@ -18,7 +20,9 @@ fn detach_unrelated_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|entity, (_,)| world.detach::<&str>(entity));
+    world.query::<(&u32,)>(|entity, (_,)| {
+        world.detach::<&str>(entity);
+    });
 }
 
 #[test]
@@ -44,4 +48,12 @@ fn spawn_unrelated_in_query() {
     world.query::<(&u32,)>(|_, (_,)| {
         world.spawn(("bar",));
     });
+}
+
+#[test]
+fn detach() {
+    let world = World::default();
+    let entity = world.spawn((String::new(),));
+    world.detach::<String>(entity).unwrap();
+    assert_eq!(None, world.detach::<String>(entity));
 }
