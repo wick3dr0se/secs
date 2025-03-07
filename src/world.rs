@@ -18,6 +18,13 @@ use crate::{
 #[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Entity(NonZeroU64);
 
+impl Entity {
+    /// Returns the unique numeric identifier of this entity.
+    pub fn id(&self) -> u64 {
+        self.0.get()
+    }
+}
+
 #[cfg(feature = "multithreaded")]
 pub trait SendSync: Any + Send + Sync {}
 #[cfg(not(feature = "multithreaded"))]
@@ -75,7 +82,7 @@ impl World {
     /// # use secs::prelude::*;
     /// # let world = World::default();
     /// world.spawn(("player", 42));
-    /// world.spawn(("animal", 12, 5.3))
+    /// world.spawn(("animal", 12, 5.3));
     /// ```
     #[track_caller]
     pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
@@ -162,7 +169,7 @@ impl World {
     /// ```rust
     /// # use secs::prelude::*;
     /// # let world = World::default();
-    /// world.query::<(String, u32)>(|entity_id, (s, u)| {
+    /// world.query::<(&String, &u32)>(|entity_id, (s, u)| {
     ///     println!("{s}: {u}");
     /// });
     /// ```
@@ -253,5 +260,14 @@ impl World {
         // Shallow clone, everything is reference counted inside
         let scheduler = self.scheduler.clone();
         scheduler.run(self);
+    }
+
+    /// Clear the world by removing all entities, components, systems and resources
+    pub fn clear(&mut self) {
+        self.entities = AtomicU64::new(0);
+        self.dead_entities.clear();
+        self.sparse_sets.clear();
+        self.resources.clear();
+        self.scheduler.clear();
     }
 }

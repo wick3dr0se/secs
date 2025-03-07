@@ -73,6 +73,10 @@ impl Scheduler {
         }
     }
 
+    pub(crate) fn clear(&mut self) {
+        self.systems.write().unwrap().clear();
+    }
+
     pub(crate) fn run(&self, world: &mut World) {
         #[cfg(feature = "multithreaded")]
         let len = self.parallel_systems.read().unwrap().len();
