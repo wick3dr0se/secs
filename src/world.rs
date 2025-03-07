@@ -1,6 +1,6 @@
 use std::{
     any::{Any, TypeId},
-    collections::HashMap,
+    collections::{BTreeSet, HashMap},
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -29,6 +29,7 @@ impl<T: ?Sized + Any> SendSync for T {}
 #[derive(Default)]
 pub struct World {
     entities: AtomicU64,
+    dead_entities: BTreeSet<Entity>,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
@@ -52,6 +53,11 @@ impl World {
 
     #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Attaching `{}` to despawned entity",
+            std::any::type_name::<C>(),
+        );
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
         } else {
@@ -69,7 +75,12 @@ impl World {
 
     #[track_caller]
     pub fn despawn(&mut self, entity: Entity) {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Removing an already removed entity"
+        );
         self.sparse_sets.remove(entity);
+        self.dead_entities.insert(entity);
     }
 
     #[track_caller]
@@ -79,6 +90,11 @@ impl World {
 
     #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Detaching `{}` from despawned entity",
+            std::any::type_name::<C>(),
+        );
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.remove(entity)
         }
@@ -86,12 +102,22 @@ impl World {
 
     #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Getting `{}` from despawned entity",
+            std::any::type_name::<C>(),
+        );
         let set = self.sparse_sets.get::<C>()?;
         MappedRwLockReadGuard::try_map(set, |set| set.get(entity)).ok()
     }
 
     #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Getting `{}` from despawned entity",
+            std::any::type_name::<C>(),
+        );
         let set = self.sparse_sets.get_mut::<C>()?;
         MappedRwLockWriteGuard::try_map(set, |set| set.get_mut(entity)).ok()
     }
