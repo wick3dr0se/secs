@@ -7,7 +7,6 @@ edition = "2024"
 elsa = "1.11.0"
 parking_lot = "0.12.3"
 rayon = { version = "1.10.0", optional = true }
-thunderdome = "0.6.1"
 
 [features]
 multithreaded = ["rayon"]

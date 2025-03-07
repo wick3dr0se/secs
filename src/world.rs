@@ -1,10 +1,11 @@
 use std::{
     any::{Any, TypeId},
     collections::HashMap,
+    num::NonZeroU64,
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
-use thunderdome::{Arena, Index};
 
 use crate::{
     components::AttachComponents,
@@ -13,7 +14,8 @@ use crate::{
     sparse_set::{SparseSet, SparseSets},
 };
 
-pub type Entity = Index;
+#[derive(Copy, Clone, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Entity(NonZeroU64);
 
 #[cfg(feature = "multithreaded")]
 pub trait SendSync: Any + Send + Sync {}
@@ -26,7 +28,7 @@ impl<T: ?Sized + Any> SendSync for T {}
 
 #[derive(Default)]
 pub struct World {
-    entities: Arena<()>,
+    entities: AtomicU64,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
@@ -48,6 +50,7 @@ impl World {
         self.sparse_sets.get_mut::<C>()
     }
 
+    #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.insert(entity, component);
@@ -56,32 +59,38 @@ impl World {
         }
     }
 
-    pub fn spawn<C: AttachComponents>(&mut self, components: C) -> Entity {
-        let entity = self.entities.insert(());
+    #[track_caller]
+    pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
+        let entity = self.entities.fetch_add(1, Ordering::Relaxed);
+        let entity = Entity(NonZeroU64::new(entity + 1).unwrap());
         components.attach_to_entity(self, entity);
         entity
     }
 
+    #[track_caller]
     pub fn despawn(&mut self, entity: Entity) {
-        self.entities.remove(entity);
         self.sparse_sets.remove(entity);
     }
 
+    #[track_caller]
     pub fn attach<C: AttachComponents>(&self, entity: Entity, components: C) {
         components.attach_to_entity(self, entity);
     }
 
+    #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) {
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
             set.remove(entity)
         }
     }
 
+    #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         let set = self.sparse_sets.get::<C>()?;
         MappedRwLockReadGuard::try_map(set, |set| set.get(entity)).ok()
     }
 
+    #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         let set = self.sparse_sets.get_mut::<C>()?;
         MappedRwLockWriteGuard::try_map(set, |set| set.get_mut(entity)).ok()

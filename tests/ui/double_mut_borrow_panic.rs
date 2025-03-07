@@ -3,7 +3,7 @@
 use secs::prelude::*;
 
 fn main() {
-    let mut world = World::default();
+    let world = World::default();
 
     world.spawn((1_u32,));
     world.spawn((10_u32,));

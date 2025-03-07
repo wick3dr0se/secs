@@ -1,7 +1,7 @@
 use secs::prelude::*;
 
 fn optional_components() {
-    let mut world = World::default();
+    let world = World::default();
 
     let mut results = vec![];
     world.query::<(&u32, &str)>(|_, _| {});
