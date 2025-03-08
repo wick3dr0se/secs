@@ -67,6 +67,12 @@ impl<C> SparseSet<C> {
     pub fn iter_mut(&mut self) -> impl Iterator<Item = (Entity, &mut C)> {
         self.ids.iter().copied().zip(self.dense.iter_mut())
     }
+
+    pub fn clear(&mut self) {
+        self.sparse.clear();
+        self.dense.clear();
+        self.ids.clear();
+    }
 }
 
 trait Set: SendSync {
@@ -104,10 +110,6 @@ impl SparseSets {
         }
     }
 
-    pub fn clear(&mut self) {
-        self.sets.as_mut().clear();
-    }
-
     #[track_caller]
     pub fn get<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
         let set = self.sets.get(&TypeId::of::<C>())?;
@@ -136,5 +138,9 @@ impl SparseSets {
             let dynthing: *mut dyn Set = dynbox;
             &mut *dynthing.cast::<SparseSet<C>>()
         }))
+    }
+
+    pub fn clear(&mut self) {
+        self.sets.as_mut().clear();
     }
 }

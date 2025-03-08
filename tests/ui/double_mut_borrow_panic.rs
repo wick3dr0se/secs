@@ -1,6 +1,6 @@
 //@run:101
 
-use secs::prelude::*;
+use secs::World;
 
 fn main() {
     let world = World::default();

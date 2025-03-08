@@ -9,7 +9,4 @@ mod scheduler;
 mod sparse_set;
 mod world;
 
-/// The one and only way to import things from this crate.
-pub mod prelude {
-    pub use super::world::{Entity, World};
-}
+pub use world::{Entity, World};

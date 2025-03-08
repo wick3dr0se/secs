@@ -79,7 +79,7 @@ impl World {
     /// Create a new entity and immediately initialize it with the given components.
     ///
     /// ```rust
-    /// # use secs::prelude::*;
+    /// # use secs::World;
     /// # let world = World::default();
     /// world.spawn(("player", 42));
     /// world.spawn(("animal", 12, 5.3));
@@ -90,17 +90,6 @@ impl World {
         let entity = Entity(NonZeroU64::new(entity + 1).unwrap());
         components.attach_to_entity(self, entity);
         entity
-    }
-
-    /// Detach all components from an entity and drop them.
-    /// If you to extract specific components, call [Self::detach] first.
-    #[track_caller]
-    pub fn detach_all(&mut self, entity: Entity) {
-        assert!(
-            !self.dead_entities.contains(&entity),
-            "Removing an already removed entity"
-        );
-        self.sparse_sets.remove(entity);
     }
 
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
@@ -126,6 +115,44 @@ impl World {
         );
         let mut set = self.sparse_sets.get_mut::<C>()?;
         set.remove(entity)
+    }
+
+    /// Detach all components from an entity and drop them.
+    /// If you want to extract specific components, call [Self::detach] first.
+    #[track_caller]
+    pub fn detach_all(&mut self, entity: Entity) {
+        assert!(
+            !self.dead_entities.contains(&entity),
+            "Removing an already removed entity"
+        );
+        self.sparse_sets.remove(entity);
+    }
+
+    /// Detach all components of a specific type from all entities and drop them.
+    ///
+    /// This method removes all components of type `C` from every entity in the world.
+    /// If no entities have components of type `C`, this method does nothing.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use secs::World;
+    /// # let world = World::default();
+    /// # let entity = world.spawn(("player", 42));
+    /// world.detach_any::<i32>();
+    /// assert!(!world.is_attached::<i32>(entity));
+    /// ```
+    pub fn detach_any<C: 'static>(&self) {
+        if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
+            set.clear();
+        }
+    }
+
+    /// Check if an entity has a specific component attached.
+    pub fn is_attached<C: 'static>(&self, entity: Entity) -> bool {
+        self.sparse_sets
+            .get::<C>()
+            .is_some_and(|set| set.get(entity).is_some())
     }
 
     /// Immutable access to an entity's component.
@@ -167,7 +194,7 @@ impl World {
     /// the entities discarded because a later component does not exist for it.
     ///
     /// ```rust
-    /// # use secs::prelude::*;
+    /// # use secs::World;
     /// # let world = World::default();
     /// world.query::<(&String, &u32)>(|entity_id, (s, u)| {
     ///     println!("{s}: {u}");

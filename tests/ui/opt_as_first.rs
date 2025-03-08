@@ -1,4 +1,4 @@
-use secs::prelude::*;
+use secs::World;
 
 fn optional_components() {
     let world = World::default();
