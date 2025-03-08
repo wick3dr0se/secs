@@ -1,4 +1,4 @@
-use secs::prelude::*;
+use secs::World;
 
 #[test]
 #[should_panic(

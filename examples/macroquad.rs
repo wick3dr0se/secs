@@ -1,5 +1,5 @@
 use macroquad::{prelude::*, rand, ui::root_ui};
-use secs::prelude::World;
+use secs::World;
 
 struct GameState {
     paused: bool,

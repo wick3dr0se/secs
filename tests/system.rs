@@ -1,6 +1,6 @@
 use std::panic::AssertUnwindSafe;
 
-use secs::prelude::*;
+use secs::World;
 
 #[test]
 fn remove() {

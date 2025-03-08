@@ -16,16 +16,16 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
-    pub(crate) fn register_mut(&mut self, system: MutSystem) {
+    pub fn register_mut(&mut self, system: MutSystem) {
         self.systems.write().unwrap().push(system)
     }
 
     #[cfg(feature = "multithreaded")]
-    pub(crate) fn register_parallel(&mut self, system: System) {
+    pub fn register_parallel(&mut self, system: System) {
         self.parallel_systems.write().unwrap().push(system)
     }
 
-    pub(crate) fn register(&mut self, system: System) {
+    pub fn register(&mut self, system: System) {
         // SAFETY: a `fn(&World)` is always safe to use as a `fn(&mut World)`, Rust just doesn't support that safely.
         self.systems
             .write()
@@ -33,7 +33,7 @@ impl Scheduler {
             .push(unsafe { std::mem::transmute::<System, MutSystem>(system) })
     }
 
-    pub(crate) fn deregister(&mut self, system: System) {
+    pub fn deregister(&mut self, system: System) {
         #[expect(clippy::ptr_eq)]
         let position = self
             .systems
@@ -60,7 +60,7 @@ impl Scheduler {
         }
     }
 
-    pub(crate) fn deregister_mut(&mut self, system: MutSystem) {
+    pub fn deregister_mut(&mut self, system: MutSystem) {
         #[expect(unpredictable_function_pointer_comparisons)]
         let position = self
             .systems
@@ -73,11 +73,11 @@ impl Scheduler {
         }
     }
 
-    pub(crate) fn clear(&mut self) {
+    pub fn clear(&mut self) {
         self.systems.write().unwrap().clear();
     }
 
-    pub(crate) fn run(&self, world: &mut World) {
+    pub fn run(&self, world: &mut World) {
         #[cfg(feature = "multithreaded")]
         let len = self.parallel_systems.read().unwrap().len();
         #[cfg(feature = "multithreaded")]

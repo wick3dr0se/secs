@@ -1,6 +1,6 @@
 //! A very minimalistic entity component system.
 //!
-//! Start by creating a [World](world::World) and invoke methods on it
+//! Start by creating a [World] and invoke methods on it
 //! to fill your world with life.
 
 mod components;
@@ -9,7 +9,4 @@ mod scheduler;
 mod sparse_set;
 mod world;
 
-/// The one and only way to import things from this crate.
-pub mod prelude {
-    pub use super::world::{Entity, World};
-}
+pub use world::{Entity, World};
