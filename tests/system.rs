@@ -1,4 +1,7 @@
-use std::panic::AssertUnwindSafe;
+use std::{
+    panic::AssertUnwindSafe,
+    sync::{Arc, Mutex},
+};
 
 use secs::World;
 
@@ -8,13 +11,9 @@ fn remove() {
     fn boom(_: &World) {
         panic!()
     }
-    // Miri will assume every time you mention a function you could have a new address
-    // While this is bogus in many cases, it's the only way to catch the rare cases where
-    // it's an issue. So we do this provenance preserving deduplication by eagerly creating a pointer.
-    let boom = boom as fn(&World);
-    world.add_system(boom);
+    let id = world.add_system(boom);
     assert!(std::panic::catch_unwind(AssertUnwindSafe(|| world.run_systems())).is_err());
-    world.remove_system(boom);
+    world.remove_system(id);
     world.run_systems();
 }
 
@@ -24,20 +23,13 @@ fn remove_within() {
     fn boom(_: &World) {
         panic!()
     }
-    // Miri will assume every time you mention a function you could have a new address
-    // While this is bogus in many cases, it's the only way to catch the rare cases where
-    // it's an issue. So we do this provenance preserving deduplication by eagerly creating a pointer.
-    let boom = boom as fn(&World);
-    world.add_resource(boom);
+    let id = Arc::new(Mutex::new(None));
+    let id2 = id.clone();
+    world.add_system(move |world| {
+        world.remove_system(id.lock().unwrap().unwrap());
+    });
 
-    fn defuse(world: &World) {
-        let boom = *world.get_resource::<fn(&World)>().unwrap();
-        // Remove the boom system. Since we run before it, it will never actuall run, yay.
-        world.remove_system(boom);
-    }
-
-    world.add_system(defuse);
-    world.add_system(boom);
+    *id2.lock().unwrap() = Some(world.add_system(boom));
     world.run_systems();
 }
 
