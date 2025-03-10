@@ -4,7 +4,7 @@ use secs::World;
 
 #[test]
 fn remove() {
-    let mut world = World::default();
+    let world = World::default();
     fn boom(_: &World) {
         panic!()
     }

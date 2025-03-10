@@ -274,10 +274,8 @@ impl World {
     }
 
     /// Run all systems once.
-    pub fn run_systems(&mut self) {
-        // Shallow clone, everything is reference counted inside
-        let scheduler = self.scheduler.clone();
-        scheduler.run(self);
+    pub fn run_systems(&self) {
+        self.scheduler.run(self);
     }
 
     /// Clear [World] by removing all entities, components, systems and resources.
