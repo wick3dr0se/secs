@@ -10,7 +10,7 @@ use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
 use crate::{
     components::AttachComponents,
     query::Query,
-    scheduler::{MutSystem, Scheduler, System},
+    scheduler::{Scheduler, System},
     sparse_set::{SparseSet, SparseSets},
 };
 
@@ -245,13 +245,6 @@ impl World {
             .and_then(|r| r.downcast_ref())
     }
 
-    /// Same as [Self::get_resource] but with mutable access.
-    pub fn get_resource_mut<R: 'static>(&mut self) -> Option<&mut R> {
-        self.resources
-            .get_mut(&TypeId::of::<R>())
-            .and_then(|r| r.downcast_mut())
-    }
-
     /// Remove a global resource and get it back in an owned manner.
     pub fn remove_resource<R: 'static>(&mut self) -> Option<Box<R>> {
         Some(
@@ -265,29 +258,19 @@ impl World {
     /// Add a system that will run in parallel on threads with all
     /// other parallel systems.
     #[cfg(feature = "multithreaded")]
-    pub fn add_parallel_system(&mut self, system: System) {
+    pub fn add_parallel_system(&self, system: System) {
         self.scheduler.register_parallel(system);
     }
 
     /// Add a system that will run after all systems that were added before it.
-    pub fn add_system(&mut self, system: System) {
+    pub fn add_system(&self, system: System) {
         self.scheduler.register(system);
-    }
-
-    /// Same as [Self::add_system], but the system has mutable access to the [World].
-    pub fn add_mut_system(&mut self, system: MutSystem) {
-        self.scheduler.register_mut(system);
     }
 
     /// Remove a system. Note that due to how compilers work this may not
     /// work if the system is declared in another crate.
-    pub fn remove_system(&mut self, system: System) {
+    pub fn remove_system(&self, system: System) {
         self.scheduler.deregister(system);
-    }
-
-    /// [Self::remove_system] but mutable.
-    pub fn remove_mut_system(&mut self, system: MutSystem) {
-        self.scheduler.deregister_mut(system);
     }
 
     /// Run all systems once.
