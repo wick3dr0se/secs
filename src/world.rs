@@ -278,6 +278,15 @@ impl World {
         self.scheduler.register(system)
     }
 
+    /// Add a system that will run after all systems that were added before it.
+    pub fn add_query_system<Q: Query>(
+        &self,
+        system: impl for<'b, 'c, 'd, 'e, 'f> Fn(&World, Entity, Q::Short<'b, 'c, 'd, 'e, 'f>) + SendSync,
+    ) -> SysId {
+        self.scheduler
+            .register(move |world| world.query::<Q>(|e, q| system(world, e, q)))
+    }
+
     /// Remove a system. Note that due to how compilers work this may not
     /// work if the system is declared in another crate.
     pub fn remove_system(&self, system: SysId) {
