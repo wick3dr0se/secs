@@ -12,7 +12,7 @@ use parking_lot::{
 use crate::{
     components::AttachComponents,
     query::Query,
-    scheduler::{Scheduler, System},
+    scheduler::{Scheduler, SysId, SystemFn},
     sparse_set::{SparseSet, SparseSets},
 };
 
@@ -269,18 +269,18 @@ impl World {
     /// Add a system that will run in parallel on threads with all
     /// other parallel systems.
     #[cfg(feature = "multithreaded")]
-    pub fn add_parallel_system(&self, system: System) {
+    pub fn add_parallel_system(&self, system: impl SystemFn) {
         self.scheduler.register_parallel(system);
     }
 
     /// Add a system that will run after all systems that were added before it.
-    pub fn add_system(&self, system: System) {
-        self.scheduler.register(system);
+    pub fn add_system(&self, system: impl SystemFn) -> SysId {
+        self.scheduler.register(system)
     }
 
     /// Remove a system. Note that due to how compilers work this may not
     /// work if the system is declared in another crate.
-    pub fn remove_system(&self, system: System) {
+    pub fn remove_system(&self, system: SysId) {
         self.scheduler.deregister(system);
     }
 
