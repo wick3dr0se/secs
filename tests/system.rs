@@ -30,13 +30,13 @@ fn remove_within() {
     let boom = boom as fn(&World);
     world.add_resource(boom);
 
-    fn defuse(world: &mut World) {
+    fn defuse(world: &World) {
         let boom = *world.get_resource::<fn(&World)>().unwrap();
         // Remove the boom system. Since we run before it, it will never actuall run, yay.
         world.remove_system(boom);
     }
 
-    world.add_mut_system(defuse);
+    world.add_system(defuse);
     world.add_system(boom);
     world.run_systems();
 }

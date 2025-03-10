@@ -1,4 +1,5 @@
 use macroquad::{prelude::*, rand, ui::root_ui};
+use parking_lot::RwLock;
 use secs::World;
 
 struct GameState {
@@ -143,7 +144,7 @@ async fn main() {
         world.spawn((Powerup { active: true }, Position { x, y }));
     }
 
-    world.add_resource(GameState { paused: false });
+    world.add_resource(RwLock::new(GameState { paused: false }));
 
     // macroquad is single threaded so any systems executing its code cannot be run in parallel
     world.add_system(move_system);
@@ -161,7 +162,8 @@ async fn main() {
         clear_background(SKYBLUE);
 
         if is_key_pressed(KeyCode::P) {
-            if let Some(game_state) = world.get_resource_mut::<GameState>() {
+            if let Some(game_state) = world.get_resource::<RwLock<GameState>>() {
+                let mut game_state = game_state.write();
                 game_state.paused = !game_state.paused;
             }
         }
