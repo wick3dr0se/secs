@@ -274,7 +274,7 @@ impl World {
     }
 
     /// Run all systems once.
-    pub fn run_systems(&self) {
+    pub fn run_systems(&mut self) {
         self.scheduler.run(self);
     }
 
