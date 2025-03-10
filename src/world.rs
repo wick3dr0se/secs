@@ -25,6 +25,12 @@ impl Entity {
     }
 }
 
+impl From<u64> for Entity {
+    fn from(value: u64) -> Self {
+        Self(NonZeroU64::new(value).unwrap())
+    }
+}
+
 #[cfg(feature = "multithreaded")]
 pub trait SendSync: Any + Send + Sync {}
 #[cfg(not(feature = "multithreaded"))]
