@@ -5,7 +5,9 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
-use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
+use parking_lot::{
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 
 use crate::{
     components::AttachComponents,
@@ -50,9 +52,9 @@ pub struct World {
     sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
-    resources: HashMap<TypeId, Box<dyn Any + Send + Sync>>,
+    resources: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
     #[cfg(not(feature = "multithreaded"))]
-    resources: HashMap<TypeId, Box<dyn Any>>,
+    resources: HashMap<TypeId, RwLock<Box<dyn Any>>>,
 }
 
 impl World {
@@ -235,14 +237,22 @@ impl World {
 
     /// Register a global resource that can be accessed via [Self::get_resource] or [Self::get_resource_mut].
     pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
-        self.resources.insert(TypeId::of::<R>(), Box::new(res));
+        self.resources
+            .insert(TypeId::of::<R>(), RwLock::new(Box::new(res)));
     }
 
     /// Retrieve a resource of type `R` from [World] with immutable access.
-    pub fn get_resource<R: 'static>(&self) -> Option<&R> {
+    pub fn get_resource<R: 'static>(&self) -> Option<MappedRwLockReadGuard<'_, R>> {
         self.resources
             .get(&TypeId::of::<R>())
-            .and_then(|r| r.downcast_ref())
+            .and_then(|r| RwLockReadGuard::try_map(r.read(), |r| r.downcast_ref()).ok())
+    }
+
+    /// Retrieve a resource of type `R` from [World] with immutable access.
+    pub fn get_resource_mut<R: 'static>(&self) -> Option<MappedRwLockWriteGuard<'_, R>> {
+        self.resources
+            .get(&TypeId::of::<R>())
+            .and_then(|r| RwLockWriteGuard::try_map(r.write(), |r| r.downcast_mut()).ok())
     }
 
     /// Remove a global resource and get it back in an owned manner.
@@ -250,6 +260,7 @@ impl World {
         Some(
             self.resources
                 .remove(&TypeId::of::<R>())?
+                .into_inner()
                 .downcast()
                 .unwrap(),
         )
