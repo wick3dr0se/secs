@@ -3,7 +3,7 @@ use std::{
     sync::{Arc, Mutex},
 };
 
-use secs::World;
+use secs::{SysId, World};
 
 #[test]
 fn remove() {
@@ -11,7 +11,7 @@ fn remove() {
     fn boom(_: &World) {
         panic!()
     }
-    let id = world.add_system(boom);
+    let id: SysId = world.add_system(boom);
     assert!(std::panic::catch_unwind(AssertUnwindSafe(|| world.run_systems())).is_err());
     world.remove_system(id);
     world.run_systems();
