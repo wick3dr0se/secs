@@ -17,7 +17,7 @@ impl<T: Fn(&World) + SendSync> SystemFn for T {}
 pub type System = (u64, Arc<dyn SystemFn>);
 
 /// A unique ID for a specific system generated when
-/// the system was [registered](System::register).
+/// the system was [registered](Scheduler::register).
 /// Can be used to [deregister](Scheduler::deregister) the system later.
 #[derive(Copy, Clone)]
 pub struct SysId(u64);
