@@ -1,4 +1,4 @@
 
 thread 'main' panicked at tests/ui/panic_location.rs:12:11:
-Getting `u32` from despawned entity
+Getting `u32` from despawned entity (despawned at tests/ui/panic_location.rs:10:11)
 note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
