@@ -76,12 +76,22 @@ impl<C> SparseSet<C> {
 }
 
 trait Set: SendSync {
+    #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+    fn remove(&mut self, entity: Entity) -> Option<&'static str>;
+
+    #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
     fn remove(&mut self, entity: Entity);
 }
 
 impl<C: SendSync> Set for SparseSet<C> {
+    #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+    fn remove(&mut self, entity: Entity) -> Option<&'static str> {
+        self.remove(entity).map(|_| std::any::type_name::<C>())
+    }
+
+    #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
     fn remove(&mut self, entity: Entity) {
-        self.remove(entity);
+        self.remove(entity)
     }
 }
 
@@ -89,6 +99,12 @@ impl<C: SendSync> Set for SparseSet<C> {
 pub struct SparseSets {
     sets: FrozenMap<TypeId, Box<RwLock<dyn Set>>>,
 }
+
+#[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+pub(crate) type RemoveType = String;
+
+#[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
+pub(crate) type RemoveType = ();
 
 impl SparseSets {
     pub fn insert<C: SendSync>(&self, entity: Entity, component: C) {
@@ -99,15 +115,27 @@ impl SparseSets {
     }
 
     #[track_caller]
-    pub fn remove(&mut self, entity: Entity) {
+    pub fn remove(&mut self, entity: Entity) -> RemoveType {
+        #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+        let mut component = String::new();
+
         for set in self.sets.as_mut().values() {
             let Some(mut guard) = set.try_write() else {
                 panic!(
                     "Tried to access component mutably, but it is already being read or written to",
                 )
             };
+
+            #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+            if let Some(c) = guard.remove(entity) {
+                component.push_str(c);
+                component.push_str(", ");
+            }
+            #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
             guard.remove(entity);
         }
+        #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+        component
     }
 
     #[track_caller]
