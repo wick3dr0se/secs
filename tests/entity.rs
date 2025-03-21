@@ -53,6 +53,7 @@ fn spawn_related_in_query() {
 
 #[test]
 #[should_panic(expected = "Attaching `alloc::string::String` to despawned entity")]
+#[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 fn attach_to_despawned() {
     let mut world = World::default();
 
