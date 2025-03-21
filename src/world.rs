@@ -17,7 +17,7 @@ use crate::{
     components::AttachComponents,
     query::Query,
     scheduler::{Scheduler, SysId, SystemFn},
-    sparse_set::{SparseSet, SparseSets},
+    sparse_set::{RemoveType, SparseSet, SparseSets},
 };
 
 /// An opaque id for an entity.
@@ -53,7 +53,7 @@ impl<T: ?Sized + Any> SendSync for T {}
 pub struct World {
     entities: AtomicU64,
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-    dead_entities: BTreeMap<Entity, &'static Location<'static>>,
+    dead_entities: BTreeMap<Entity, (&'static Location<'static>, String)>,
     sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
@@ -78,9 +78,9 @@ impl World {
     #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some(loc) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
-                "Attaching `{}` to despawned entity (despawned at {loc})",
+                "Attaching `{}` to despawned entity (despawned at {loc}).Components at despawn time: {components}",
                 std::any::type_name::<C>(),
             );
         }
@@ -110,10 +110,10 @@ impl World {
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
     #[track_caller]
     pub fn despawn(&mut self, entity: Entity) {
-        self.detach_all(entity);
+        let _detach_info = self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
-            .insert(entity, std::panic::Location::caller());
+            .insert(entity, (std::panic::Location::caller(), _detach_info));
     }
 
     /// Attach multiple components to an entity at once.
@@ -126,9 +126,9 @@ impl World {
     #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) -> Option<C> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some(loc) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
-                "Detaching `{}` from despawned entity (despawned at {loc})",
+                "Detaching `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 std::any::type_name::<C>(),
             );
         }
@@ -139,12 +139,14 @@ impl World {
     /// Detach all components from an entity and drop them.
     /// If you want to extract specific components, call [Self::detach] first.
     #[track_caller]
-    pub fn detach_all(&mut self, entity: Entity) {
+    pub fn detach_all(&mut self, entity: Entity) -> RemoveType {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some(loc) = self.dead_entities.get(&entity) {
-            panic!("Detaching all components from despawned entity (despawned at {loc})");
+        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+            panic!(
+                "Detaching all components from despawned entity (despawned at {loc})\nComponents at despawn time: {components}"
+            );
         }
-        self.sparse_sets.remove(entity);
+        self.sparse_sets.remove(entity)
     }
 
     /// Detach all components of a specific type from all entities and drop them.
@@ -182,9 +184,9 @@ impl World {
     #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some(loc) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
-                "Getting `{}` from despawned entity (despawned at {loc})",
+                "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 std::any::type_name::<C>(),
             );
         }
@@ -200,9 +202,9 @@ impl World {
     #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some(loc) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
-                "Getting `{}` from despawned entity (despawned at {loc})",
+                "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 std::any::type_name::<C>(),
             );
         }
