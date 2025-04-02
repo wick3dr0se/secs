@@ -91,7 +91,7 @@ impl<C: SendSync> Set for SparseSet<C> {
 
     #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
     fn remove(&mut self, entity: Entity) {
-        self.remove(entity)
+        self.remove(entity);
     }
 }
 
