@@ -13,7 +13,7 @@ multithreaded = ["rayon"]
 track_dead_entities = []
 
 [dev-dependencies]
-macroquad = "0.4.13"
+macroquad = "0.4.14"
 ui_test = "0.29.1"
 
 [[test]]
