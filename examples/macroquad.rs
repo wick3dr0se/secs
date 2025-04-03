@@ -23,6 +23,8 @@ struct Sprite {
 
 struct Powerup {
     active: bool,
+    width: f32,
+    height: f32,
 }
 
 struct Score {
@@ -64,26 +66,24 @@ fn move_system(world: &World) {
 
 fn collision_system(world: &World) {
     world.query::<(&Position, &mut Sprite, &mut Score)>(
-        |_, (player_pos, player_spr, player_score)| {
-            let player_center = Position {
-                x: player_pos.x + (player_spr.width * 0.5),
-                y: player_pos.y + (player_spr.height * 0.5),
-            };
-            world.query::<(&Position, &mut Powerup)>(|_, (powerup_pos, powerup)| {
+        |_, (player_center, player, player_score)| {
+            world.query::<(&Position, &mut Powerup)>(|_, (powerup_center, powerup)| {
                 if powerup.active
-                    && (powerup_pos.x - player_center.x).abs() < player_spr.width * 0.5
-                    && (powerup_pos.y - player_center.y).abs() < player_spr.height * 0.5
+                    && (powerup_center.x - player_center.x).abs()
+                        < (powerup.width * 0.5) + (player.width * 0.5)
+                    && (powerup_center.y - player_center.y).abs()
+                        < (powerup.height * 0.5) + (player.height * 0.5)
                 {
                     powerup.active = false;
 
-                    player_spr.shape = match player_spr.shape {
+                    player.shape = match player.shape {
                         Shape::Square => Shape::Circle,
                         Shape::Circle => Shape::Square,
                     };
 
                     player_score.value += 1;
-                    player_spr.width += 3.;
-                    player_spr.height += 3.;
+                    player.width += 3.;
+                    player.height += 3.;
                 }
             });
         },
@@ -105,18 +105,25 @@ fn render_system(world: &World) {
     }
 
     world.query::<(&Position, &Sprite)>(|_, (pos, sprite)| match sprite.shape {
-        Shape::Square => draw_rectangle(pos.x, pos.y, sprite.width, sprite.height, ORANGE),
-        Shape::Circle => draw_circle(
-            pos.x + sprite.width / 2.,
-            pos.y + sprite.height / 2.,
-            sprite.width / 2.,
-            PURPLE,
+        Shape::Square => draw_rectangle(
+            pos.x - (sprite.width * 0.5),
+            pos.y - (sprite.width * 0.5),
+            sprite.width,
+            sprite.height,
+            ORANGE,
         ),
+        Shape::Circle => draw_circle(pos.x, pos.y, sprite.width * 0.5, PURPLE),
     });
 
     world.query::<(&Powerup, &Position)>(|_, (powerup, pos)| {
         if powerup.active {
-            draw_rectangle(pos.x, pos.y, 15., 15., RED);
+            draw_rectangle(
+                pos.x - (powerup.width * 0.5),
+                pos.y - (powerup.width * 0.5),
+                powerup.width,
+                powerup.height,
+                RED,
+            );
         }
     });
 
@@ -144,7 +151,14 @@ async fn main() {
         let x = rand::gen_range(0., screen_width());
         let y = rand::gen_range(0., screen_height());
 
-        world.spawn((Powerup { active: true }, Position { x, y }));
+        world.spawn((
+            Powerup {
+                active: true,
+                width: 15.,
+                height: 15.,
+            },
+            Position { x, y },
+        ));
     }
 
     world.add_resource(GameState { paused: false });
