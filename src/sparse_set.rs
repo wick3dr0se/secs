@@ -79,9 +79,6 @@ impl<C> SparseSet<C> {
 }
 
 trait Set: SendSync {
-    // fn as_any(&self) -> &dyn Any;
-    // fn as_any_mut(&mut self) -> &mut dyn Any;
-
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str>;
 
