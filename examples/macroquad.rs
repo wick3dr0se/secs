@@ -65,10 +65,14 @@ fn move_system(world: &World) {
 fn collision_system(world: &World) {
     world.query::<(&Position, &mut Sprite, &mut Score)>(
         |_, (player_pos, player_spr, player_score)| {
+            let player_center = Position {
+                x: player_pos.x + (player_spr.width * 0.5),
+                y: player_pos.y + (player_spr.height * 0.5),
+            };
             world.query::<(&Position, &mut Powerup)>(|_, (powerup_pos, powerup)| {
                 if powerup.active
-                    && (powerup_pos.x - player_pos.x).abs() < player_spr.width
-                    && (powerup_pos.y - player_pos.y).abs() < player_spr.height
+                    && (powerup_pos.x - player_center.x).abs() < player_spr.width * 0.5
+                    && (powerup_pos.y - player_center.y).abs() < player_spr.height * 0.5
                 {
                     powerup.active = false;
 
