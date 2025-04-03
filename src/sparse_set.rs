@@ -79,9 +79,6 @@ impl<C> SparseSet<C> {
 }
 
 trait Set: SendSync {
-    fn as_any(&self) -> &dyn Any;
-    fn as_any_mut(&mut self) -> &mut dyn Any;
-
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str>;
 
@@ -90,13 +87,6 @@ trait Set: SendSync {
 }
 
 impl<C: SendSync> Set for SparseSet<C> {
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
-    fn as_any_mut(&mut self) -> &mut dyn Any {
-        self
-    }
-
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str> {
         self.remove(entity).map(|_| type_name::<C>())
@@ -161,7 +151,8 @@ impl SparseSets {
             )
         };
         Some(RwLockReadGuard::map(guard, |dynbox| {
-            dynbox.as_any().downcast_ref::<SparseSet<C>>().unwrap()
+            let dynbox: &dyn Any = dynbox;
+            dynbox.downcast_ref::<SparseSet<C>>().unwrap()
         }))
     }
 
@@ -175,7 +166,8 @@ impl SparseSets {
             )
         };
         Some(RwLockWriteGuard::map(guard, |dynbox| {
-            dynbox.as_any_mut().downcast_mut::<SparseSet<C>>().unwrap()
+            let as_any: &mut dyn Any = dynbox;
+            as_any.downcast_mut::<SparseSet<C>>().unwrap()
         }))
     }
 
