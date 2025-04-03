@@ -5,7 +5,10 @@ use elsa::sync::FrozenMap;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
-use std::{any::TypeId, collections::HashMap};
+use std::{
+    any::{Any, TypeId, type_name},
+    collections::HashMap,
+};
 
 use crate::world::{Entity, SendSync};
 
@@ -76,6 +79,9 @@ impl<C> SparseSet<C> {
 }
 
 trait Set: SendSync {
+    fn as_any(&self) -> &dyn Any;
+    fn as_any_mut(&mut self) -> &mut dyn Any;
+
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str>;
 
@@ -84,9 +90,16 @@ trait Set: SendSync {
 }
 
 impl<C: SendSync> Set for SparseSet<C> {
+    fn as_any(&self) -> &dyn Any {
+        self
+    }
+    fn as_any_mut(&mut self) -> &mut dyn Any {
+        self
+    }
+
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str> {
-        self.remove(entity).map(|_| std::any::type_name::<C>())
+        self.remove(entity).map(|_| type_name::<C>())
     }
 
     #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
@@ -144,12 +157,11 @@ impl SparseSets {
         let Some(guard) = set.try_read() else {
             panic!(
                 "Tried to access component `{}`, but it was already being written to",
-                std::any::type_name::<C>()
+                type_name::<C>()
             )
         };
-        Some(RwLockReadGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *const dyn Set = dynbox;
-            &*dynthing.cast::<SparseSet<C>>()
+        Some(RwLockReadGuard::map(guard, |dynbox| {
+            dynbox.as_any().downcast_ref::<SparseSet<C>>().unwrap()
         }))
     }
 
@@ -159,12 +171,11 @@ impl SparseSets {
         let Some(guard) = set.try_write() else {
             panic!(
                 "Tried to access component `{}` mutably, but it was already being written to or read from",
-                std::any::type_name::<C>()
+                type_name::<C>()
             )
         };
-        Some(RwLockWriteGuard::map(guard, |dynbox| unsafe {
-            let dynthing: *mut dyn Set = dynbox;
-            &mut *dynthing.cast::<SparseSet<C>>()
+        Some(RwLockWriteGuard::map(guard, |dynbox| {
+            dynbox.as_any_mut().downcast_mut::<SparseSet<C>>().unwrap()
         }))
     }
 
