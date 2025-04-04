@@ -3,7 +3,7 @@ use std::collections::BTreeMap;
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::panic::Location;
 use std::{
-    any::{Any, TypeId},
+    any::{Any, TypeId, type_name},
     collections::HashMap,
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
@@ -17,7 +17,7 @@ use crate::{
     components::AttachComponents,
     query::Query,
     scheduler::{Scheduler, SysId, SystemFn},
-    sparse_set::{RemoveType, SparseSet, SparseSets},
+    sparse_set::{RemoveType, SparseSets},
 };
 
 /// An opaque id for an entity.
@@ -54,7 +54,7 @@ pub struct World {
     entities: AtomicU64,
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     dead_entities: BTreeMap<Entity, (&'static Location<'static>, String)>,
-    sparse_sets: SparseSets,
+    pub(crate) sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
     resources: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
@@ -64,24 +64,12 @@ pub struct World {
 
 impl World {
     #[track_caller]
-    pub(crate) fn get_sparse_set<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
-        self.sparse_sets.get::<C>()
-    }
-
-    #[track_caller]
-    pub(crate) fn get_sparse_set_mut<C: 'static>(
-        &self,
-    ) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
-        self.sparse_sets.get_mut::<C>()
-    }
-
-    #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
                 "Attaching `{}` to despawned entity (despawned at {loc}).Components at despawn time: {components}",
-                std::any::type_name::<C>(),
+                type_name::<C>(),
             );
         }
         if let Some(mut set) = self.sparse_sets.get_mut::<C>() {
@@ -113,7 +101,7 @@ impl World {
         let _detach_info = self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
-            .insert(entity, (std::panic::Location::caller(), _detach_info));
+            .insert(entity, (Location::caller(), _detach_info));
     }
 
     /// Attach multiple components to an entity at once.
@@ -129,7 +117,7 @@ impl World {
         if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
                 "Detaching `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
-                std::any::type_name::<C>(),
+                type_name::<C>(),
             );
         }
         let mut set = self.sparse_sets.get_mut::<C>()?;
@@ -187,7 +175,7 @@ impl World {
         if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
-                std::any::type_name::<C>(),
+                type_name::<C>(),
             );
         }
         let set = self.sparse_sets.get::<C>()?;
@@ -205,7 +193,7 @@ impl World {
         if let Some((loc, components)) = self.dead_entities.get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
-                std::any::type_name::<C>(),
+                type_name::<C>(),
             );
         }
         let set = self.sparse_sets.get_mut::<C>()?;

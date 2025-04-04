@@ -54,7 +54,7 @@ impl<C: 'static> SparseSetGetter for &C {
     type Iter<'c> = MappedRwLockReadGuard<'c, SparseSet<C>>;
     #[track_caller]
     fn get_set(world: &World) -> Option<Self::Iter<'_>> {
-        world.get_sparse_set()
+        world.sparse_sets.get()
     }
     fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>> {
         iter.get(entity)
@@ -87,7 +87,7 @@ impl<C: 'static> SparseSetGetter for &mut C {
     type Iter<'c> = MappedRwLockWriteGuard<'c, SparseSet<C>>;
     #[track_caller]
     fn get_set(world: &World) -> Option<Self::Iter<'_>> {
-        world.get_sparse_set_mut()
+        world.sparse_sets.get_mut()
     }
     fn get_entity<'b>(iter: &'b mut Self::Iter<'_>, entity: Entity) -> Option<Self::Short<'b>> {
         iter.get_mut(entity)

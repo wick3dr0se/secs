@@ -10,17 +10,17 @@ use rayon::iter::{IntoParallelIterator, ParallelIterator};
 
 use crate::world::World;
 
-pub trait SystemFn: Fn(&World) + SendSync {}
-
-impl<T: Fn(&World) + SendSync> SystemFn for T {}
-
-pub type System = (u64, Arc<dyn SystemFn>);
-
 /// A unique ID for a specific system generated when
 /// the system was [registered](Scheduler::register).
 /// Can be used to [deregister](Scheduler::deregister) the system later.
 #[derive(Copy, Clone)]
 pub struct SysId(u64);
+
+pub trait SystemFn: Fn(&World) + SendSync {}
+
+impl<T: Fn(&World) + SendSync> SystemFn for T {}
+
+pub type System = (SysId, Arc<dyn SystemFn>);
 
 #[derive(Default)]
 pub struct Scheduler {
@@ -31,17 +31,19 @@ pub struct Scheduler {
 }
 
 impl Scheduler {
+    fn add_to(&self, systems: &RwLock<Vec<System>>, system: impl SystemFn) -> SysId {
+        let id = SysId(self.next_id.fetch_add(1, Ordering::Relaxed));
+        systems.write().push((id, Arc::new(system)));
+        id
+    }
+
     #[cfg(feature = "multithreaded")]
     pub fn register_parallel(&self, system: impl SystemFn) -> SysId {
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        self.parallel_systems.write().push((id, Arc::new(system)));
-        SysId(id)
+        self.add_to(&self.parallel_systems, system)
     }
 
     pub fn register(&self, system: impl SystemFn) -> SysId {
-        let id = self.next_id.fetch_add(1, Ordering::Relaxed);
-        self.systems.write().push((id, Arc::new(system)));
-        SysId(id)
+        self.add_to(&self.systems, system)
     }
 
     pub fn deregister(&self, system: SysId) {
@@ -49,7 +51,7 @@ impl Scheduler {
             .systems
             .read()
             .iter()
-            .position(|(id, _)| *id == system.0);
+            .position(|(id, _)| id.0 == system.0);
         if let Some(pos) = position {
             let _ = self.systems.write().remove(pos);
             #[cfg(feature = "multithreaded")]
@@ -60,7 +62,7 @@ impl Scheduler {
             .parallel_systems
             .read()
             .iter()
-            .position(|(id, _)| *id == system.0);
+            .position(|(id, _)| id.0 == system.0);
         #[cfg(feature = "multithreaded")]
         if let Some(pos) = position {
             let _ = self.parallel_systems.write().remove(pos);

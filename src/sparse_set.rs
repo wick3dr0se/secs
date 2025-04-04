@@ -151,8 +151,7 @@ impl SparseSets {
             )
         };
         Some(RwLockReadGuard::map(guard, |dynbox| {
-            let dynbox: &dyn Any = dynbox;
-            dynbox.downcast_ref::<SparseSet<C>>().unwrap()
+            (dynbox as &dyn Any).downcast_ref::<SparseSet<C>>().unwrap()
         }))
     }
 
@@ -166,8 +165,9 @@ impl SparseSets {
             )
         };
         Some(RwLockWriteGuard::map(guard, |dynbox| {
-            let as_any: &mut dyn Any = dynbox;
-            as_any.downcast_mut::<SparseSet<C>>().unwrap()
+            (dynbox as &mut dyn Any)
+                .downcast_mut::<SparseSet<C>>()
+                .unwrap()
         }))
     }
 
