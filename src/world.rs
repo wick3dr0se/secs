@@ -52,7 +52,7 @@ impl<T: ?Sized + Any> SendSync for T {}
 pub struct World {
     entities: AtomicU64,
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-    dead_entities: BTreeMap<Entity, (&'static Location<'static>, String)>,
+    dead_entities: RwLock<BTreeMap<Entity, (&'static Location<'static>, String)>>,
     pub(crate) sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
@@ -65,7 +65,7 @@ impl World {
     #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Attaching `{}` to despawned entity (despawned at {loc}).Components at despawn time: {components}",
                 type_name::<C>(),
@@ -100,6 +100,7 @@ impl World {
         let _detach_info = self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
+            .write()
             .insert(entity, (Location::caller(), _detach_info));
     }
 
@@ -113,7 +114,7 @@ impl World {
     #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) -> Option<C> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Detaching `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
@@ -128,7 +129,7 @@ impl World {
     #[track_caller]
     pub fn detach_all(&mut self, entity: Entity) -> RemoveType {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Detaching all components from despawned entity (despawned at {loc})\nComponents at despawn time: {components}"
             );
@@ -171,7 +172,7 @@ impl World {
     #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
@@ -189,7 +190,7 @@ impl World {
     #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
