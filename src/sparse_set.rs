@@ -1,7 +1,4 @@
-#[cfg(not(feature = "multithreaded"))]
-use elsa::FrozenMap;
-#[cfg(feature = "multithreaded")]
-use elsa::sync::FrozenMap;
+use crate::FrozenMap;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
@@ -169,9 +166,5 @@ impl SparseSets {
                 .downcast_mut::<SparseSet<C>>()
                 .unwrap()
         }))
-    }
-
-    pub fn clear(&mut self) {
-        self.sets.as_mut().clear();
     }
 }

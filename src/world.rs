@@ -1,16 +1,15 @@
+use crate::FrozenMap;
+use parking_lot::{
+    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
+};
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::collections::BTreeMap;
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::panic::Location;
 use std::{
     any::{Any, TypeId, type_name},
-    collections::HashMap,
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
-};
-
-use parking_lot::{
-    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 
 use crate::{
@@ -57,9 +56,9 @@ pub struct World {
     pub(crate) sparse_sets: SparseSets,
     scheduler: Scheduler,
     #[cfg(feature = "multithreaded")]
-    resources: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
+    resources: FrozenMap<TypeId, Box<RwLock<dyn Any + Send + Sync>>>,
     #[cfg(not(feature = "multithreaded"))]
-    resources: HashMap<TypeId, RwLock<Box<dyn Any>>>,
+    resources: FrozenMap<TypeId, Box<RwLock<dyn Any>>>,
 }
 
 impl World {
@@ -241,9 +240,11 @@ impl World {
     }
 
     /// Register a global resource that can be accessed via [Self::get_resource] or [Self::get_resource_mut].
-    pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
+    ///
+    /// Resources cannot be removed, but you can insert `Option`s and set them to `None`.
+    pub fn add_resource<R: 'static + SendSync>(&self, res: R) {
         self.resources
-            .insert(TypeId::of::<R>(), RwLock::new(Box::new(res)));
+            .insert(TypeId::of::<R>(), Box::new(RwLock::new(res)));
     }
 
     /// Retrieve a resource of type `R` from [World] with immutable access.
@@ -258,17 +259,6 @@ impl World {
         self.resources
             .get(&TypeId::of::<R>())
             .and_then(|r| RwLockWriteGuard::try_map(r.write(), |r| r.downcast_mut()).ok())
-    }
-
-    /// Remove a global resource and get it back in an owned manner.
-    pub fn remove_resource<R: 'static>(&mut self) -> Option<Box<R>> {
-        Some(
-            self.resources
-                .remove(&TypeId::of::<R>())?
-                .into_inner()
-                .downcast()
-                .unwrap(),
-        )
     }
 
     /// Add a system that will run in parallel on threads with all
@@ -303,15 +293,5 @@ impl World {
     /// Note: it is not recommended to run this from within a system, as that will usually result in infinite recursion.
     pub fn run_systems(&self) {
         self.scheduler.run(self);
-    }
-
-    /// Clear [World] by removing all entities, components, systems and resources.
-    pub fn clear(&mut self) {
-        self.entities = AtomicU64::new(0);
-        #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        self.dead_entities.clear();
-        self.sparse_sets.clear();
-        self.resources.clear();
-        self.scheduler.clear();
     }
 }
