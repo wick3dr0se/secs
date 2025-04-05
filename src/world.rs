@@ -3,11 +3,13 @@ use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+use std::any::type_name;
+#[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::collections::BTreeMap;
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::panic::Location;
 use std::{
-    any::{Any, TypeId, type_name},
+    any::{Any, TypeId},
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
 };
@@ -96,7 +98,7 @@ impl World {
 
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
     #[track_caller]
-    pub fn despawn(&mut self, entity: Entity) {
+    pub fn despawn(&self, entity: Entity) {
         let _detach_info = self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
@@ -127,7 +129,7 @@ impl World {
     /// Detach all components from an entity and drop them.
     /// If you want to extract specific components, call [Self::detach] first.
     #[track_caller]
-    pub fn detach_all(&mut self, entity: Entity) -> RemoveType {
+    pub fn detach_all(&self, entity: Entity) -> RemoveType {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(

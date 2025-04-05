@@ -1,4 +1,4 @@
-use crate::FrozenMap;
+use crate::FrozenVec;
 use parking_lot::{
     MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
@@ -97,7 +97,8 @@ impl<C: SendSync> Set for SparseSet<C> {
 
 #[derive(Default)]
 pub struct SparseSets {
-    sets: FrozenMap<TypeId, Box<RwLock<dyn Set>>>,
+    set_access: RwLock<HashMap<TypeId, usize>>,
+    sets: FrozenVec<Box<RwLock<dyn Set>>>,
 }
 
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
@@ -108,18 +109,22 @@ pub(crate) type RemoveType = ();
 
 impl SparseSets {
     pub fn insert<C: SendSync>(&self, entity: Entity, component: C) {
-        self.sets.insert(
-            TypeId::of::<C>(),
-            Box::new(RwLock::new(SparseSet::new(entity, component))),
-        );
+        let component = Box::new(RwLock::new(SparseSet::new(entity, component)));
+        #[cfg(feature = "multithreaded")]
+        let n = self.sets.push_get_index(component);
+        #[cfg(not(feature = "multithreaded"))]
+        let n = self.sets.len();
+        #[cfg(not(feature = "multithreaded"))]
+        self.sets.push(component);
+        assert_eq!(self.set_access.write().insert(TypeId::of::<C>(), n), None);
     }
 
     #[track_caller]
-    pub fn remove(&mut self, entity: Entity) -> RemoveType {
+    pub fn remove(&self, entity: Entity) -> RemoveType {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         let mut component = String::new();
 
-        for set in self.sets.as_mut().values() {
+        for set in self.sets.iter() {
             let Some(mut guard) = set.try_write() else {
                 panic!(
                     "Tried to access component mutably, but it is already being read or written to",
@@ -140,7 +145,8 @@ impl SparseSets {
 
     #[track_caller]
     pub fn get<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
-        let set = self.sets.get(&TypeId::of::<C>())?;
+        let i = *self.set_access.read().get(&TypeId::of::<C>())?;
+        let set = &self.sets.get(i).unwrap();
         let Some(guard) = set.try_read() else {
             panic!(
                 "Tried to access component `{}`, but it was already being written to",
@@ -154,7 +160,8 @@ impl SparseSets {
 
     #[track_caller]
     pub fn get_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
-        let set = self.sets.get(&TypeId::of::<C>())?;
+        let i = *self.set_access.read().get(&TypeId::of::<C>())?;
+        let set = &self.sets.get(i).unwrap();
         let Some(guard) = set.try_write() else {
             panic!(
                 "Tried to access component `{}` mutably, but it was already being written to or read from",
