@@ -69,10 +69,6 @@ impl Scheduler {
         }
     }
 
-    pub fn clear(&self) {
-        self.systems.write().clear();
-    }
-
     pub fn run(&self, world: &World) {
         #[cfg(feature = "multithreaded")]
         let len = self.parallel_systems.read().len();

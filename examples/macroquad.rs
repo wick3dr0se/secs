@@ -134,7 +134,7 @@ fn render_system(world: &World) {
 
 #[macroquad::main("secs_macroquad")]
 async fn main() {
-    let mut world = World::default();
+    let world = World::default();
 
     world.spawn((
         Position { x: 100., y: 100. },
