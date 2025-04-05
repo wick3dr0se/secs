@@ -299,7 +299,9 @@ impl World {
     }
 
     /// Run all systems once.
-    pub fn run_systems(&mut self) {
+    ///
+    /// Note: it is not recommended to run this from within a system, as that will usually result in infinite recursion.
+    pub fn run_systems(&self) {
         self.scheduler.run(self);
     }
 
