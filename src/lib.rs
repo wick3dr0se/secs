@@ -3,10 +3,10 @@
 //! Start by creating a [World] and invoke methods on it
 //! to fill your world with life.
 
-#[cfg(feature = "multithreaded")]
-use elsa::sync::{FrozenMap, FrozenVec};
 #[cfg(not(feature = "multithreaded"))]
-use elsa::{FrozenMap, FrozenVec};
+use elsa::FrozenVec;
+#[cfg(feature = "multithreaded")]
+use elsa::sync::FrozenVec;
 
 mod components;
 mod query;
