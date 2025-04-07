@@ -7,7 +7,7 @@ use secs::{SysId, World};
 
 #[test]
 fn remove() {
-    let mut world = World::default();
+    let world = World::default();
     fn boom(_: &World) {
         panic!()
     }
@@ -19,7 +19,7 @@ fn remove() {
 
 #[test]
 fn remove_within() {
-    let mut world = World::default();
+    let world = World::default();
     fn boom(_: &World) {
         panic!()
     }
@@ -35,7 +35,7 @@ fn remove_within() {
 
 #[test]
 fn despawn() {
-    let mut world = World::default();
+    let world = World::default();
 
     let id = world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
@@ -48,7 +48,7 @@ fn despawn() {
 
 #[test]
 fn get() {
-    let mut world = World::default();
+    let world = World::default();
 
     let id = world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
@@ -62,7 +62,7 @@ fn get() {
 #[test]
 #[should_panic(expected = "Tried to access component `u32`, but it was already being written to")]
 fn get_fail() {
-    let mut world = World::default();
+    let world = World::default();
 
     let id = world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
@@ -75,7 +75,7 @@ fn get_fail() {
 
 #[test]
 fn query_system() {
-    let mut world = World::default();
+    let world = World::default();
 
     let id = world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));

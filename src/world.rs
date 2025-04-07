@@ -1,16 +1,14 @@
+use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock};
+#[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+use std::any::type_name;
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::collections::BTreeMap;
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
 use std::panic::Location;
 use std::{
-    any::{Any, TypeId, type_name},
-    collections::HashMap,
+    any::Any,
     num::NonZeroU64,
     sync::atomic::{AtomicU64, Ordering},
-};
-
-use parking_lot::{
-    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
 };
 
 use crate::{
@@ -53,20 +51,16 @@ impl<T: ?Sized + Any> SendSync for T {}
 pub struct World {
     entities: AtomicU64,
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-    dead_entities: BTreeMap<Entity, (&'static Location<'static>, String)>,
+    dead_entities: RwLock<BTreeMap<Entity, (&'static Location<'static>, String)>>,
     pub(crate) sparse_sets: SparseSets,
     scheduler: Scheduler,
-    #[cfg(feature = "multithreaded")]
-    resources: HashMap<TypeId, RwLock<Box<dyn Any + Send + Sync>>>,
-    #[cfg(not(feature = "multithreaded"))]
-    resources: HashMap<TypeId, RwLock<Box<dyn Any>>>,
 }
 
 impl World {
     #[track_caller]
     pub(crate) fn attach_component<C: SendSync>(&self, entity: Entity, component: C) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Attaching `{}` to despawned entity (despawned at {loc}).Components at despawn time: {components}",
                 type_name::<C>(),
@@ -97,10 +91,11 @@ impl World {
 
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
     #[track_caller]
-    pub fn despawn(&mut self, entity: Entity) {
+    pub fn despawn(&self, entity: Entity) {
         let _detach_info = self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
+            .write()
             .insert(entity, (Location::caller(), _detach_info));
     }
 
@@ -114,7 +109,7 @@ impl World {
     #[track_caller]
     pub fn detach<C: 'static>(&self, entity: Entity) -> Option<C> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Detaching `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
@@ -127,9 +122,9 @@ impl World {
     /// Detach all components from an entity and drop them.
     /// If you want to extract specific components, call [Self::detach] first.
     #[track_caller]
-    pub fn detach_all(&mut self, entity: Entity) -> RemoveType {
+    pub fn detach_all(&self, entity: Entity) -> RemoveType {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Detaching all components from despawned entity (despawned at {loc})\nComponents at despawn time: {components}"
             );
@@ -172,7 +167,7 @@ impl World {
     #[track_caller]
     pub fn get<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockReadGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
@@ -190,7 +185,7 @@ impl World {
     #[track_caller]
     pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<MappedRwLockWriteGuard<C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        if let Some((loc, components)) = self.dead_entities.get(&entity) {
+        if let Some((loc, components)) = self.dead_entities.read().get(&entity) {
             panic!(
                 "Getting `{}` from despawned entity (despawned at {loc})\nComponents at despawn time: {components}",
                 type_name::<C>(),
@@ -240,37 +235,6 @@ impl World {
         }
     }
 
-    /// Register a global resource that can be accessed via [Self::get_resource] or [Self::get_resource_mut].
-    pub fn add_resource<R: 'static + SendSync>(&mut self, res: R) {
-        self.resources
-            .insert(TypeId::of::<R>(), RwLock::new(Box::new(res)));
-    }
-
-    /// Retrieve a resource of type `R` from [World] with immutable access.
-    pub fn get_resource<R: 'static>(&self) -> Option<MappedRwLockReadGuard<'_, R>> {
-        self.resources
-            .get(&TypeId::of::<R>())
-            .and_then(|r| RwLockReadGuard::try_map(r.read(), |r| r.downcast_ref()).ok())
-    }
-
-    /// Retrieve a resource of type `R` from [World] with immutable access.
-    pub fn get_resource_mut<R: 'static>(&self) -> Option<MappedRwLockWriteGuard<'_, R>> {
-        self.resources
-            .get(&TypeId::of::<R>())
-            .and_then(|r| RwLockWriteGuard::try_map(r.write(), |r| r.downcast_mut()).ok())
-    }
-
-    /// Remove a global resource and get it back in an owned manner.
-    pub fn remove_resource<R: 'static>(&mut self) -> Option<Box<R>> {
-        Some(
-            self.resources
-                .remove(&TypeId::of::<R>())?
-                .into_inner()
-                .downcast()
-                .unwrap(),
-        )
-    }
-
     /// Add a system that will run in parallel on threads with all
     /// other parallel systems.
     #[cfg(feature = "multithreaded")]
@@ -299,17 +263,9 @@ impl World {
     }
 
     /// Run all systems once.
-    pub fn run_systems(&mut self) {
+    ///
+    /// Note: it is not recommended to run this from within a system, as that will usually result in infinite recursion.
+    pub fn run_systems(&self) {
         self.scheduler.run(self);
-    }
-
-    /// Clear [World] by removing all entities, components, systems and resources.
-    pub fn clear(&mut self) {
-        self.entities = AtomicU64::new(0);
-        #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        self.dead_entities.clear();
-        self.sparse_sets.clear();
-        self.resources.clear();
-        self.scheduler.clear();
     }
 }
