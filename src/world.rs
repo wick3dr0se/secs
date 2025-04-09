@@ -11,6 +11,8 @@ use std::{
     sync::atomic::{AtomicU64, Ordering},
 };
 
+#[cfg(feature = "multithreaded")]
+use crate::scheduler::ParallelSystemFn;
 use crate::{
     components::AttachComponents,
     query::Query,
@@ -238,7 +240,7 @@ impl World {
     /// Add a system that will run in parallel on threads with all
     /// other parallel systems.
     #[cfg(feature = "multithreaded")]
-    pub fn add_parallel_system(&self, system: impl SystemFn) {
+    pub fn add_parallel_system(&self, system: impl ParallelSystemFn) {
         self.scheduler.register_parallel(system);
     }
 
