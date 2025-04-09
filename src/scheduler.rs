@@ -1,7 +1,6 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicU64, Ordering},
-};
+#[cfg(feature = "multithreaded")]
+use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::world::SendSync;
 use parking_lot::RwLock;
@@ -20,30 +19,37 @@ pub trait SystemFn: Fn(&World) + SendSync {}
 
 impl<T: Fn(&World) + SendSync> SystemFn for T {}
 
-pub type System = (SysId, Arc<dyn SystemFn>);
+pub type System = (SysId, Option<Box<dyn SystemFn>>);
+
+#[cfg(feature = "multithreaded")]
+pub trait ParallelSystemFn: Fn(&World) + SendSync {}
+
+#[cfg(feature = "multithreaded")]
+impl<T: Fn(&World) + SendSync> ParallelSystemFn for T {}
+
+#[cfg(feature = "multithreaded")]
+pub type ParallelSystem = (SysId, Arc<dyn ParallelSystemFn>);
 
 #[derive(Default)]
 pub struct Scheduler {
     next_id: AtomicU64,
     #[cfg(feature = "multithreaded")]
-    parallel_systems: RwLock<Vec<System>>,
+    parallel_systems: RwLock<Vec<ParallelSystem>>,
     systems: RwLock<Vec<System>>,
 }
 
 impl Scheduler {
-    fn add_to(&self, systems: &RwLock<Vec<System>>, system: impl SystemFn) -> SysId {
+    #[cfg(feature = "multithreaded")]
+    pub fn register_parallel(&self, system: impl ParallelSystemFn) -> SysId {
         let id = SysId(self.next_id.fetch_add(1, Ordering::Relaxed));
-        systems.write().push((id, Arc::new(system)));
+        self.parallel_systems.write().push((id, Arc::new(system)));
         id
     }
 
-    #[cfg(feature = "multithreaded")]
-    pub fn register_parallel(&self, system: impl SystemFn) -> SysId {
-        self.add_to(&self.parallel_systems, system)
-    }
-
     pub fn register(&self, system: impl SystemFn) -> SysId {
-        self.add_to(&self.systems, system)
+        let id = SysId(self.next_id.fetch_add(1, Ordering::Relaxed));
+        self.systems.write().push((id, Some(Box::new(system))));
+        id
     }
 
     pub fn deregister(&self, system: SysId) {
@@ -81,8 +87,19 @@ impl Scheduler {
             .for_each(|sys| sys(world));
 
         let len = self.systems.read().len();
-        (0..len)
-            .filter_map(|i| Some(self.systems.read().get(i)?.1.clone()))
-            .for_each(|sys| sys(world));
+        for i in 0..len {
+            let mut guard = self.systems.write();
+            let Some((_, sys)) = guard.get_mut(i) else {
+                break;
+            };
+            let sys = sys.take().unwrap();
+            drop(guard);
+            sys(world);
+            let mut guard = self.systems.write();
+            let Some((_, entry)) = guard.get_mut(i) else {
+                break;
+            };
+            *entry = Some(sys);
+        }
     }
 }
