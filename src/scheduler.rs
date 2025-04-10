@@ -15,9 +15,9 @@ use crate::world::World;
 #[derive(Copy, Clone)]
 pub struct SysId(u64);
 
-pub trait SystemFn: Fn(&World) + SendSync {}
+pub trait SystemFn: FnMut(&World) + SendSync {}
 
-impl<T: Fn(&World) + SendSync> SystemFn for T {}
+impl<T: FnMut(&World) + SendSync> SystemFn for T {}
 
 pub type System = (SysId, Option<Box<dyn SystemFn>>);
 
@@ -92,7 +92,7 @@ impl Scheduler {
             let Some((_, sys)) = guard.get_mut(i) else {
                 break;
             };
-            let sys = sys.take().unwrap();
+            let mut sys = sys.take().unwrap();
             drop(guard);
             sys(world);
             let mut guard = self.systems.write();

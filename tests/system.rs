@@ -84,6 +84,13 @@ fn query_system() {
         *i *= 2;
     });
 
+    let mut state = 5_u32;
+
+    world.add_system(move |_world| {
+        state += 1;
+        assert!(state <= 8);
+    });
+
     for _ in 0..3 {
         world.run_systems();
     }
