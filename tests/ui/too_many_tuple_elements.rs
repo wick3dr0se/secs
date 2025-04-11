@@ -3,6 +3,18 @@ use secs::World;
 fn optional_components() {
     let world = World::default();
 
-    world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
-    //~^ ERROR: `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)` is not a valid query
+    world.query(
+        |_,
+         //~^ ERROR: is not a valid query
+         _: &u32,
+         _: &i32,
+         _: &u8,
+         _: &i8,
+         _: &u64,
+         _: &i64,
+         _: &u16,
+         _: &i16,
+         _: &u128,
+         _: &i128| {},
+    );
 }

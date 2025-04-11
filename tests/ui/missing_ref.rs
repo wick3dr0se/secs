@@ -4,10 +4,9 @@ fn optional_components() {
     let world = World::default();
 
     let mut results = vec![];
-    world.query::<(&u32, &str)>(|_, _| {});
-    //~^ ERROR: the size for values of type `str` cannot be known at compilation time
+    world.query(|_, _: &u32, _: &str| {});
+    //~^ ERROR: is not a valid query
 
-    world.query::<(u32, &&str)>(|_, _| {});
-    //~^ ERROR: `u32` cannot be used as a query component
-    //~| ERROR: `u32` cannot be the first element of a query
+    world.query(|_, _: u32, _: &&str| {});
+    //~^ ERROR: is not a valid query
 }

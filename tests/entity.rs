@@ -21,7 +21,7 @@ fn detach_related_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|entity, (_,)| {
+    world.query(|entity, _: &u32| {
         world.detach::<u32>(entity);
     });
 }
@@ -32,7 +32,7 @@ fn detach_unrelated_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|entity, (_,)| {
+    world.query(|entity, _: &u32| {
         world.detach::<&str>(entity);
     });
 }
@@ -46,7 +46,7 @@ fn spawn_related_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|_, (&i,)| {
+    world.query(|_, &i: &u32| {
         world.spawn((i * 2,));
     });
 }
@@ -68,7 +68,7 @@ fn spawn_unrelated_in_query() {
 
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
-    world.query::<(&u32,)>(|_, (_,)| {
+    world.query(|_, _: &u32| {
         world.spawn(("bar",));
     });
 }
