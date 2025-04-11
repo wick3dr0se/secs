@@ -1,17 +1,24 @@
-error[E0277]: `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)` is not a valid query
- --> tests/ui/too_many_tuple_elements.rs:6:11
-  |
-L |     world.query::<(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)>(|_, ()| {});
-  |           ^^^^^
-  |
-  = help: the trait `secs::query::Query` is not implemented for `(u32, i32, u8, i8, u64, i64, u16, i16, u128, i128)`
-  = note: only tuples with 1 or up to 5 elements can be used as queries
-  = help: the following other types implement trait `secs::query::Query`:
-            (T, U)
-            (T, U, V)
-            (T, U, V, W)
-            (T, U, V, W, X)
-            (T,)
+error[E0277]: `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 18:19}` is not a valid query
+   --> tests/ui/too_many_tuple_elements.rs:7:9
+    |
+6   |       world.query(
+    |             ----- required by a bound introduced by this call
+7   | /         |_,
+8   | |
+9   | |          _: &u32,
+10  | |          _: &i32,
+...   |
+17  | |          _: &u128,
+18  | |          _: &i128| {},
+    | |_____________________^
+    |
+    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 18:19}`
+    = note: only tuples with 1 or up to 5 elements can be used as queries
+note: required by a bound in `World::query`
+   --> $DIR/src/world.rs
+    |
+LLL |     pub fn query<Q: Query<T>, T>(&self, f: Q) {
+    |                     ^^^^^^^^ required by this bound in `World::query`
 
 error: aborting due to 1 previous error
 

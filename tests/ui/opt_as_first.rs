@@ -6,13 +6,13 @@ fn optional_components() {
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
     let mut results = vec![];
-    world.query::<(&u32, Option<&&str>)>(|_, (i, s)| results.push((*i, s.map(|s| *s))));
+    world.query(|_, i: &u32, s: Option<&&str>| results.push((*i, s.map(|s| *s))));
     results.sort();
     assert_eq!(&results[..], &[(1, None), (10, Some("foo"))]);
 
     let mut results = vec![];
-    world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
-    //~^ ERROR: `Option<&&str>` cannot be the first element of a query
+    world.query(|_, s: Option<&&str>, i: &u32| results.push((*i, s.map(|s| *s))));
+    //~^ ERROR: is not a valid query
     results.sort();
     assert_eq!(&results[..], &[(10, Some("foo"))]);
 }

@@ -42,7 +42,7 @@ fn despawn() {
     world.despawn(id);
 
     let mut results = vec![];
-    world.query::<(&u32, Option<&&str>)>(|_, (i, s)| results.push((*i, s.map(|s| *s))));
+    world.query(|_, i: &u32, s: Option<&&'static str>| results.push((*i, s.map(|s| *s))));
     assert_eq!(&results[..], &[(10, Some("foo"))]);
 }
 
@@ -55,7 +55,7 @@ fn get() {
     world.despawn(id);
 
     let mut results = vec![];
-    world.query::<(&u32,)>(|entity, (i,)| results.push((*i, world.get(entity).map(|s| *s))));
+    world.query(|entity, i: &u32| results.push((*i, world.get(entity).map(|s| *s))));
     assert_eq!(&results[..], &[(10, Some("foo"))]);
 }
 
@@ -69,20 +69,13 @@ fn get_fail() {
     world.despawn(id);
 
     let mut results = vec![];
-    world.query::<(&mut u32,)>(|entity, (i,)| results.push((*i, world.get(entity).map(|s| *s))));
+    world.query(|entity, i: &mut u32| results.push((*i, world.get(entity).map(|s| *s))));
     assert_eq!(&results[..], &[(10, Some(0_u32))]);
 }
 
 #[test]
-fn query_system() {
+fn mut_system() {
     let world = World::default();
-
-    let id = world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
-
-    world.add_query_system::<(&mut u32,)>(|_world, _entity, (i,)| {
-        *i *= 2;
-    });
 
     let mut state = 5_u32;
 
@@ -94,6 +87,4 @@ fn query_system() {
     for _ in 0..3 {
         world.run_systems();
     }
-    let i = world.get::<u32>(id).unwrap();
-    assert_eq!(*i, 8);
 }

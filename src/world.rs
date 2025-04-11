@@ -206,15 +206,12 @@ impl World {
     /// ```rust
     /// # use secs::World;
     /// # let world = World::default();
-    /// world.query::<(&String, &u32)>(|entity_id, (s, u)| {
+    /// world.query(|entity_id, s: &String, u: &u32| {
     ///     println!("{s}: {u}");
     /// });
     /// ```
     #[track_caller]
-    pub fn query<Q: Query>(
-        &self,
-        f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Q::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    pub fn query<Q: Query<T>, T>(&self, f: Q) {
         Q::get_components(self, f)
     }
 
@@ -247,15 +244,6 @@ impl World {
     /// Add a system that will run after all systems that were added before it.
     pub fn add_system(&self, system: impl SystemFn) -> SysId {
         self.scheduler.register(system)
-    }
-
-    /// Add a system that will run after all systems that were added before it.
-    pub fn add_query_system<Q: Query>(
-        &self,
-        system: impl for<'b, 'c, 'd, 'e, 'f> Fn(&World, Entity, Q::Short<'b, 'c, 'd, 'e, 'f>) + SendSync,
-    ) -> SysId {
-        self.scheduler
-            .register(move |world| world.query::<Q>(|e, q| system(world, e, q)))
     }
 
     /// Remove a system. Note that due to how compilers work this may not

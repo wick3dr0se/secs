@@ -1,43 +1,35 @@
-error[E0277]: the size for values of type `str` cannot be known at compilation time
- --> tests/ui/missing_ref.rs:7:11
-  |
-L |     world.query::<(&u32, &str)>(|_, _| {});
-  |           ^^^^^ doesn't have a size known at compile-time
-  |
-  = help: the trait `Sized` is not implemented for `str`
-  = help: the following other types implement trait `secs::query::SparseSetGetter`:
-            &C
-            &mut C
-            Option<T>
-  = note: required for `&str` to implement `secs::query::SparseSetGetter`
+error[E0277]: `{closure@tests/ui/missing_ref.rs:7:17: 7:38}` is not a valid query
+   --> tests/ui/missing_ref.rs:7:17
+    |
+7   |     world.query(|_, _: &u32, _: &str| {});
+    |           ----- ^^^^^^^^^^^^^^^^^^^^^^^^
+    |           |
+    |           required by a bound introduced by this call
+    |
+    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/missing_ref.rs:7:17: 7:38}`
+    = note: only tuples with 1 or up to 5 elements can be used as queries
+note: required by a bound in `World::query`
+   --> $DIR/src/world.rs
+    |
+LLL |     pub fn query<Q: Query<T>, T>(&self, f: Q) {
+    |                     ^^^^^^^^ required by this bound in `World::query`
 
-error[E0277]: `u32` cannot be used as a query component
-  --> tests/ui/missing_ref.rs:10:11
-   |
-LL |     world.query::<(u32, &&str)>(|_, _| {});
-   |           ^^^^^
-   |
-   = help: the trait `secs::query::SparseSetGetter` is not implemented for `u32`
-   = note: only references and `Option`s of references can be components
-   = help: the following other types implement trait `secs::query::SparseSetGetter`:
-             &C
-             &mut C
-             Option<T>
-   = note: required for `(u32, &&str)` to implement `secs::query::Query`
+error[E0277]: `{closure@tests/ui/missing_ref.rs:10:17: 10:38}` is not a valid query
+   --> tests/ui/missing_ref.rs:10:17
+    |
+10  |     world.query(|_, _: u32, _: &&str| {});
+    |           ----- ^^^^^^^^^^^^^^^^^^^^^^^^
+    |           |
+    |           required by a bound introduced by this call
+    |
+    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/missing_ref.rs:10:17: 10:38}`
+    = note: only tuples with 1 or up to 5 elements can be used as queries
+note: required by a bound in `World::query`
+   --> $DIR/src/world.rs
+    |
+LLL |     pub fn query<Q: Query<T>, T>(&self, f: Q) {
+    |                     ^^^^^^^^ required by this bound in `World::query`
 
-error[E0277]: `u32` cannot be the first element of a query
-  --> tests/ui/missing_ref.rs:10:11
-   |
-LL |     world.query::<(u32, &&str)>(|_, _| {});
-   |           ^^^^^
-   |
-   = help: the trait `secs::query::Always` is not implemented for `u32`
-   = note: move another element to the front of the list
-   = help: the following other types implement trait `secs::query::Always`:
-             &T
-             &mut T
-   = note: required for `(u32, &&str)` to implement `secs::query::Query`
-
-error: aborting due to 3 previous errors
+error: aborting due to 2 previous errors
 
 For more information about this error, try `rustc --explain E0277`.
