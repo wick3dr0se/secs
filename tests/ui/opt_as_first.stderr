@@ -1,15 +1,18 @@
-error[E0277]: `Option<&&str>` cannot be the first element of a query
-  --> tests/ui/opt_as_first.rs:14:11
-   |
-LL |     world.query::<(Option<&&str>, &u32)>(|_, (s, i)| results.push((*i, s.map(|s| *s))));
-   |           ^^^^^
-   |
-   = help: the trait `secs::query::Always` is not implemented for `Option<&&str>`
-   = note: move another element to the front of the list
-   = help: the following other types implement trait `secs::query::Always`:
-             &T
-             &mut T
-   = note: required for `(Option<&&str>, &u32)` to implement `secs::query::Query`
+error[E0277]: `{closure@tests/ui/opt_as_first.rs:14:17: 14:47}` is not a valid query
+   --> tests/ui/opt_as_first.rs:14:17
+    |
+14  |     world.query(|_, s: Option<&&str>, i: &u32| results.push((*i, s.map(|s| *s))));
+    |           ----- ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    |           |
+    |           required by a bound introduced by this call
+    |
+    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/opt_as_first.rs:14:17: 14:47}`
+    = note: only tuples with 1 or up to 5 elements can be used as queries
+note: required by a bound in `World::query`
+   --> $DIR/src/world.rs
+    |
+LLL |     pub fn query<Q: Query<T>, T>(&self, f: Q) {
+    |                     ^^^^^^^^ required by this bound in `World::query`
 
 error: aborting due to 1 previous error
 

@@ -43,6 +43,15 @@ jobs:
     - name: Miri
       run: env MIRIFLAGS="-Zmiri-tree-borrows" cargo miri test
 
+  docs:
+    name: test docs
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: dtolnay/rust-toolchain@stable
+    - name: Doc
+      run: cargo test --doc
+
   tests:
     strategy:
       matrix:

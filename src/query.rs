@@ -10,14 +10,9 @@ use crate::{
     label = "",
     note = "only tuples with 1 or up to 5 elements can be used as queries"
 )]
-pub trait Query: Sized {
-    type Short<'b, 'c, 'd, 'e, 'f>;
-
+pub trait Query<ARGS>: Sized {
     #[track_caller]
-    fn get_components(
-        world: &World,
-        f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    );
+    fn get_components(world: &World, f: Self);
 }
 
 /// A marker trait preventing `Option` from being used as the first field in a query tuple.
@@ -97,55 +92,49 @@ impl<C: 'static> SparseSetGetter for &mut C {
     }
 }
 
-impl<T: SparseSetGetter + Always> Query for (T,) {
-    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>,);
-
+impl<T: SparseSetGetter + Always, F> Query<(T,)> for F
+where
+    F: FnMut(Entity, T::Short<'_>) + FnMut(Entity, T),
+{
     #[track_caller]
-    fn get_components(
-        world: &World,
-        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    fn get_components(world: &World, mut f: F) {
         if let Some(mut s1) = T::get_set(world) {
             for (entity, c1) in T::iter(&mut s1) {
-                f(entity, (c1,));
+                f(entity, c1);
             }
         }
     }
 }
 
-impl<T: SparseSetGetter + Always, U: SparseSetGetter> Query for (T, U) {
-    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>);
-
+impl<T: SparseSetGetter + Always, U: SparseSetGetter, F> Query<(T, U)> for F
+where
+    F: FnMut(Entity, T::Short<'_>, U::Short<'_>) + FnMut(Entity, T, U),
+{
     #[track_caller]
-    fn get_components(
-        world: &World,
-        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    fn get_components(world: &World, mut f: F) {
         if let (Some(mut s1), Some(mut s2)) = (T::get_set(world), U::get_set(world)) {
             for (entity, c1) in T::iter(&mut s1) {
                 if let Some(c2) = U::get_entity(&mut s2, entity) {
-                    f(entity, (c1, c2));
+                    f(entity, c1, c2);
                 }
             }
         }
     }
 }
 
-impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Query for (T, U, V) {
-    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>);
-
+impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, F> Query<(T, U, V)> for F
+where
+    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>) + FnMut(Entity, T, U, V),
+{
     #[track_caller]
-    fn get_components(
-        world: &World,
-        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    fn get_components(world: &World, mut f: F) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3)) =
             (T::get_set(world), U::get_set(world), V::get_set(world))
         {
             for (entity, c1) in T::iter(&mut s1) {
                 if let Some(c2) = U::get_entity(&mut s2, entity) {
                     if let Some(c3) = V::get_entity(&mut s3, entity) {
-                        f(entity, (c1, c2, c3));
+                        f(entity, c1, c2, c3);
                     }
                 }
             }
@@ -153,16 +142,14 @@ impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter> Query 
     }
 }
 
-impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter> Query
-    for (T, U, V, W)
+impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter, F>
+    Query<(T, U, V, W)> for F
+where
+    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>, W::Short<'_>)
+        + FnMut(Entity, T, U, V, W),
 {
-    type Short<'b, 'c, 'd, 'e, 'f> = (T::Short<'b>, U::Short<'c>, V::Short<'d>, W::Short<'e>);
-
     #[track_caller]
-    fn get_components(
-        world: &World,
-        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    fn get_components(world: &World, mut f: F) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4)) = (
             T::get_set(world),
             U::get_set(world),
@@ -173,7 +160,7 @@ impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: Spa
                 if let Some(c2) = U::get_entity(&mut s2, entity) {
                     if let Some(c3) = V::get_entity(&mut s3, entity) {
                         if let Some(c4) = W::get_entity(&mut s4, entity) {
-                            f(entity, (c1, c2, c3, c4));
+                            f(entity, c1, c2, c3, c4);
                         }
                     }
                 }
@@ -188,21 +175,14 @@ impl<
     V: SparseSetGetter,
     W: SparseSetGetter,
     X: SparseSetGetter,
-> Query for (T, U, V, W, X)
+    F,
+> Query<(T, U, V, W, X)> for F
+where
+    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>, W::Short<'_>, X::Short<'_>)
+        + FnMut(Entity, T, U, V, W, X),
 {
-    type Short<'b, 'c, 'd, 'e, 'f> = (
-        T::Short<'b>,
-        U::Short<'c>,
-        V::Short<'d>,
-        W::Short<'e>,
-        X::Short<'f>,
-    );
-
     #[track_caller]
-    fn get_components(
-        world: &World,
-        mut f: impl for<'b, 'c, 'd, 'e, 'f> FnMut(Entity, Self::Short<'b, 'c, 'd, 'e, 'f>),
-    ) {
+    fn get_components(world: &World, mut f: F) {
         if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4), Some(mut s5)) = (
             T::get_set(world),
             U::get_set(world),
@@ -215,7 +195,7 @@ impl<
                     if let Some(c3) = V::get_entity(&mut s3, entity) {
                         if let Some(c4) = W::get_entity(&mut s4, entity) {
                             if let Some(c5) = X::get_entity(&mut s5, entity) {
-                                f(entity, (c1, c2, c3, c4, c5));
+                                f(entity, c1, c2, c3, c4, c5);
                             }
                         }
                     }
