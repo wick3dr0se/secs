@@ -47,7 +47,7 @@ fn move_system(game_state: Arc<GameState>) -> impl Fn(&World) {
             return;
         }
 
-        world.query::<(&mut Position, &mut Velocity)>(|_entity, (pos, vel)| {
+        world.query(|_entity, pos: &mut Position, vel: &mut Velocity| {
             vel.x = 0.;
             vel.y = 0.;
 
@@ -71,9 +71,9 @@ fn move_system(game_state: Arc<GameState>) -> impl Fn(&World) {
 }
 
 fn collision_system(world: &World) {
-    world.query::<(&Position, &mut Sprite, &mut Score)>(
-        |_, (player_center, player, player_score)| {
-            world.query::<(&Position, &mut Powerup)>(|_, (powerup_center, powerup)| {
+    world.query(
+        |_, player_center: &Position, player: &mut Sprite, player_score: &mut Score| {
+            world.query(|_, powerup_center: &Position, powerup: &mut Powerup| {
                 if powerup.active
                     && (powerup_center.x - player_center.x).abs()
                         < (powerup.width * 0.5) + (player.width * 0.5)
@@ -109,7 +109,7 @@ fn render_system(game_state: Arc<GameState>) -> impl Fn(&World) {
             return;
         }
 
-        world.query::<(&Position, &Sprite)>(|_, (pos, sprite)| match sprite.shape {
+        world.query(|_, pos: &Position, sprite: &Sprite| match sprite.shape {
             Shape::Square => draw_rectangle(
                 pos.x - (sprite.width * 0.5),
                 pos.y - (sprite.width * 0.5),
@@ -120,7 +120,7 @@ fn render_system(game_state: Arc<GameState>) -> impl Fn(&World) {
             Shape::Circle => draw_circle(pos.x, pos.y, sprite.width * 0.5, PURPLE),
         });
 
-        world.query::<(&Powerup, &Position)>(|_, (powerup, pos)| {
+        world.query(|_, powerup: &Powerup, pos: &Position| {
             if powerup.active {
                 draw_rectangle(
                     pos.x - (powerup.width * 0.5),
@@ -132,7 +132,7 @@ fn render_system(game_state: Arc<GameState>) -> impl Fn(&World) {
             }
         });
 
-        world.query::<(&Score,)>(|_, (score,)| {
+        world.query(|_, score: &Score| {
             root_ui().label(None, &format!("Player Score: {}", score.value));
         });
     }

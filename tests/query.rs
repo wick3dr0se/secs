@@ -11,7 +11,7 @@ fn aliasing_mutation() {
     world.spawn((10_u32,));
 
     // 💥 in miri with stacked borrows
-    world.query::<(&mut u32, &mut u32)>(|_, (a, b)| {
+    world.query(|_, a: &mut u32, b: &mut u32| {
         // bad bad bad
         *a = *b;
         *b = *a; // 💥 in miri with tree borrows
@@ -25,12 +25,12 @@ fn optional_components() {
     world.spawn((1_u32,));
     world.spawn((10_u32, "foo"));
     let mut results = vec![];
-    world.query::<(&u32, Option<&&str>)>(|_, (i, s)| results.push((*i, s.map(|s| *s))));
+    world.query(|_, i: &u32, s: Option<&&'static str>| results.push((*i, s.map(|s| *s))));
     results.sort();
     assert_eq!(&results[..], &[(1, None), (10, Some("foo"))]);
 
     let mut results = vec![];
-    world.query::<(&&str, &u32)>(|_, (s, i)| results.push((*i, *s)));
+    world.query(|_, s: &&'static str, i: &u32| results.push((*i, *s)));
     results.sort();
     assert_eq!(&results[..], &[(10, "foo")]);
 }
