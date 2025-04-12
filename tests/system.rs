@@ -1,7 +1,4 @@
-use std::{
-    panic::AssertUnwindSafe,
-    sync::{Arc, Mutex},
-};
+use std::{cell::Cell, panic::AssertUnwindSafe, rc::Rc};
 
 use secs::{SysId, World};
 
@@ -23,13 +20,13 @@ fn remove_within() {
     fn boom(_: &World) {
         panic!()
     }
-    let id = Arc::new(Mutex::new(None));
+    let id = Rc::new(Cell::new(None));
     let id2 = id.clone();
     world.add_system(move |world| {
-        world.remove_system(id.lock().unwrap().unwrap());
+        world.remove_system(id.get().unwrap());
     });
 
-    *id2.lock().unwrap() = Some(world.add_system(boom));
+    id2.set(Some(world.add_system(boom)));
     world.run_systems();
 }
 

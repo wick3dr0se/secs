@@ -1,13 +1,11 @@
-use crate::FrozenVec;
-use parking_lot::{
-    MappedRwLockReadGuard, MappedRwLockWriteGuard, RwLock, RwLockReadGuard, RwLockWriteGuard,
-};
+use elsa::FrozenVec;
 use std::{
     any::{Any, TypeId, type_name},
+    cell::{Ref, RefCell, RefMut},
     collections::HashMap,
 };
 
-use crate::world::{Entity, SendSync};
+use crate::world::Entity;
 
 pub struct SparseSet<C> {
     pub sparse: HashMap<Entity, usize>,
@@ -75,7 +73,7 @@ impl<C> SparseSet<C> {
     }
 }
 
-trait Set: SendSync {
+trait Set: Any {
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str>;
 
@@ -83,7 +81,7 @@ trait Set: SendSync {
     fn remove(&mut self, entity: Entity);
 }
 
-impl<C: SendSync> Set for SparseSet<C> {
+impl<C: Any> Set for SparseSet<C> {
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     fn remove(&mut self, entity: Entity) -> Option<&'static str> {
         self.remove(entity).map(|_| type_name::<C>())
@@ -97,8 +95,8 @@ impl<C: SendSync> Set for SparseSet<C> {
 
 #[derive(Default)]
 pub struct SparseSets {
-    set_access: RwLock<HashMap<TypeId, usize>>,
-    sets: FrozenVec<Box<RwLock<dyn Set>>>,
+    set_access: RefCell<HashMap<TypeId, usize>>,
+    sets: FrozenVec<Box<RefCell<dyn Set>>>,
 }
 
 #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
@@ -108,15 +106,14 @@ pub(crate) type RemoveType = String;
 pub(crate) type RemoveType = ();
 
 impl SparseSets {
-    pub fn insert<C: SendSync>(&self, entity: Entity, component: C) {
-        let component = Box::new(RwLock::new(SparseSet::new(entity, component)));
-        #[cfg(feature = "multithreaded")]
-        let n = self.sets.push_get_index(component);
-        #[cfg(not(feature = "multithreaded"))]
+    pub fn insert<C: Any>(&self, entity: Entity, component: C) {
+        let component = Box::new(RefCell::new(SparseSet::new(entity, component)));
         let n = self.sets.len();
-        #[cfg(not(feature = "multithreaded"))]
         self.sets.push(component);
-        assert_eq!(self.set_access.write().insert(TypeId::of::<C>(), n), None);
+        assert_eq!(
+            self.set_access.borrow_mut().insert(TypeId::of::<C>(), n),
+            None
+        );
     }
 
     #[track_caller]
@@ -125,7 +122,7 @@ impl SparseSets {
         let mut component = String::new();
 
         for set in self.sets.iter() {
-            let Some(mut guard) = set.try_write() else {
+            let Ok(mut guard) = set.try_borrow_mut() else {
                 panic!(
                     "Tried to access component mutably, but it is already being read or written to",
                 )
@@ -144,31 +141,31 @@ impl SparseSets {
     }
 
     #[track_caller]
-    pub fn get<C: 'static>(&self) -> Option<MappedRwLockReadGuard<SparseSet<C>>> {
-        let i = *self.set_access.read().get(&TypeId::of::<C>())?;
+    pub fn get<C: 'static>(&self) -> Option<Ref<SparseSet<C>>> {
+        let i = *self.set_access.borrow().get(&TypeId::of::<C>())?;
         let set = &self.sets.get(i).unwrap();
-        let Some(guard) = set.try_read() else {
+        let Ok(guard) = set.try_borrow() else {
             panic!(
                 "Tried to access component `{}`, but it was already being written to",
                 type_name::<C>()
             )
         };
-        Some(RwLockReadGuard::map(guard, |dynbox| {
+        Some(Ref::map(guard, |dynbox| {
             (dynbox as &dyn Any).downcast_ref::<SparseSet<C>>().unwrap()
         }))
     }
 
     #[track_caller]
-    pub fn get_mut<C: 'static>(&self) -> Option<MappedRwLockWriteGuard<SparseSet<C>>> {
-        let i = *self.set_access.read().get(&TypeId::of::<C>())?;
+    pub fn get_mut<C: 'static>(&self) -> Option<RefMut<SparseSet<C>>> {
+        let i = *self.set_access.borrow().get(&TypeId::of::<C>())?;
         let set = &self.sets.get(i).unwrap();
-        let Some(guard) = set.try_write() else {
+        let Ok(guard) = set.try_borrow_mut() else {
             panic!(
                 "Tried to access component `{}` mutably, but it was already being written to or read from",
                 type_name::<C>()
             )
         };
-        Some(RwLockWriteGuard::map(guard, |dynbox| {
+        Some(RefMut::map(guard, |dynbox| {
             (dynbox as &mut dyn Any)
                 .downcast_mut::<SparseSet<C>>()
                 .unwrap()
