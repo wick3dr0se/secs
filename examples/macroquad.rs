@@ -1,13 +1,10 @@
-use std::sync::{
-    Arc,
-    atomic::{AtomicBool, Ordering},
-};
-
 use macroquad::{prelude::*, rand, ui::root_ui};
 use secs::World;
+use std::cell::Cell;
+use std::rc::Rc;
 
 struct GameState {
-    paused: AtomicBool,
+    paused: Cell<bool>,
 }
 
 struct Position {
@@ -41,9 +38,9 @@ enum Shape {
     Circle,
 }
 
-fn move_system(game_state: Arc<GameState>) -> impl Fn(&World) {
+fn move_system(game_state: Rc<GameState>) -> impl Fn(&World) {
     move |world| {
-        if game_state.paused.load(Ordering::Relaxed) {
+        if game_state.paused.get() {
             return;
         }
 
@@ -96,9 +93,9 @@ fn collision_system(world: &World) {
     )
 }
 
-fn render_system(game_state: Arc<GameState>) -> impl Fn(&World) {
+fn render_system(game_state: Rc<GameState>) -> impl Fn(&World) {
     move |world| {
-        if game_state.paused.load(Ordering::Relaxed) {
+        if game_state.paused.get() {
             let text = "PAUSED";
             let font_size = 100.;
             let text_width = measure_text(text, None, font_size as u16, 1.).width;
@@ -167,27 +164,20 @@ async fn main() {
         ));
     }
 
-    let game_state = Arc::new(GameState {
-        paused: AtomicBool::new(false),
+    let game_state = Rc::new(GameState {
+        paused: Cell::new(false),
     });
 
-    // macroquad is single threaded so any systems executing its code cannot be run in parallel
     world.add_system(move_system(game_state.clone()));
-    #[cfg(feature = "multithreaded")]
-    {
-        world.add_parallel_system(collision_system);
-    }
-    #[cfg(not(feature = "multithreaded"))]
-    {
-        world.add_system(collision_system);
-    }
+    world.add_system(collision_system);
+
     world.add_system(render_system(game_state.clone()));
 
     loop {
         clear_background(SKYBLUE);
 
         if is_key_pressed(KeyCode::P) {
-            game_state.paused.fetch_not(Ordering::Relaxed);
+            game_state.paused.set(!game_state.paused.get());
         }
 
         // run all parallel and sequential systems

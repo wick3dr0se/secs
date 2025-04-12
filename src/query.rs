@@ -1,4 +1,4 @@
-use parking_lot::{MappedRwLockReadGuard, MappedRwLockWriteGuard};
+use std::cell::{Ref, RefMut};
 
 use crate::{
     sparse_set::SparseSet,
@@ -46,7 +46,7 @@ pub trait SparseSetGetter {
 
 impl<C: 'static> SparseSetGetter for &C {
     type Short<'b> = &'b C;
-    type Iter<'c> = MappedRwLockReadGuard<'c, SparseSet<C>>;
+    type Iter<'c> = Ref<'c, SparseSet<C>>;
     #[track_caller]
     fn get_set(world: &World) -> Option<Self::Iter<'_>> {
         world.sparse_sets.get()
@@ -79,7 +79,7 @@ impl<T: SparseSetGetter> SparseSetGetter for Option<T> {
 
 impl<C: 'static> SparseSetGetter for &mut C {
     type Short<'b> = &'b mut C;
-    type Iter<'c> = MappedRwLockWriteGuard<'c, SparseSet<C>>;
+    type Iter<'c> = RefMut<'c, SparseSet<C>>;
     #[track_caller]
     fn get_set(world: &World) -> Option<Self::Iter<'_>> {
         world.sparse_sets.get_mut()

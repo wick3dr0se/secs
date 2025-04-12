@@ -1,17 +1,19 @@
-use crate::world::{Entity, SendSync, World};
+use crate::world::{Entity, World};
+
+use std::any::Any;
 
 pub trait AttachComponents {
     fn attach_to_entity(self, world: &World, entity: Entity);
 }
 
-impl<C1: SendSync> AttachComponents for (C1,) {
+impl<C1: Any> AttachComponents for (C1,) {
     #[track_caller]
     fn attach_to_entity(self, world: &World, entity: Entity) {
         world.attach_component(entity, self.0);
     }
 }
 
-impl<C1: SendSync, C2: SendSync> AttachComponents for (C1, C2) {
+impl<C1: Any, C2: Any> AttachComponents for (C1, C2) {
     #[track_caller]
     fn attach_to_entity(self, world: &World, entity: Entity) {
         world.attach_component(entity, self.0);
@@ -19,7 +21,7 @@ impl<C1: SendSync, C2: SendSync> AttachComponents for (C1, C2) {
     }
 }
 
-impl<C1: SendSync, C2: SendSync, C3: SendSync> AttachComponents for (C1, C2, C3) {
+impl<C1: Any, C2: Any, C3: Any> AttachComponents for (C1, C2, C3) {
     #[track_caller]
     fn attach_to_entity(self, world: &World, entity: Entity) {
         world.attach_component(entity, self.0);
@@ -28,7 +30,7 @@ impl<C1: SendSync, C2: SendSync, C3: SendSync> AttachComponents for (C1, C2, C3)
     }
 }
 
-impl<C1: SendSync, C2: SendSync, C3: SendSync, C4: SendSync> AttachComponents for (C1, C2, C3, C4) {
+impl<C1: Any, C2: Any, C3: Any, C4: Any> AttachComponents for (C1, C2, C3, C4) {
     #[track_caller]
     fn attach_to_entity(self, world: &World, entity: Entity) {
         world.attach_component(entity, self.0);
@@ -38,9 +40,7 @@ impl<C1: SendSync, C2: SendSync, C3: SendSync, C4: SendSync> AttachComponents fo
     }
 }
 
-impl<C1: SendSync, C2: SendSync, C3: SendSync, C4: SendSync, C5: SendSync> AttachComponents
-    for (C1, C2, C3, C4, C5)
-{
+impl<C1: Any, C2: Any, C3: Any, C4: Any, C5: Any> AttachComponents for (C1, C2, C3, C4, C5) {
     #[track_caller]
     fn attach_to_entity(self, world: &World, entity: Entity) {
         world.attach_component(entity, self.0);
