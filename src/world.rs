@@ -49,6 +49,7 @@ impl Default for World {
     fn default() -> Self {
         Self {
             entities: Cell::new(NonZeroU64::MIN),
+            #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
             dead_entities: Default::default(),
             sparse_sets: Default::default(),
             scheduler: Default::default(),
