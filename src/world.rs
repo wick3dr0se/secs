@@ -11,7 +11,6 @@ use std::{
 };
 
 use crate::{
-    components::AttachComponents,
     query::Query,
     scheduler::{Scheduler, SysId, SystemFn},
     sparse_set::{RemoveType, SparseSets},
@@ -64,7 +63,7 @@ pub struct World {
 
 impl World {
     #[track_caller]
-    pub(crate) fn attach_component<C: Any>(&self, entity: Entity, component: C) {
+    fn insert<C: Any>(&self, entity: Entity, component: C) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some((loc, components)) = self.dead_entities.borrow().get(&entity) {
             panic!(
@@ -89,9 +88,7 @@ impl World {
     /// ```
     #[track_caller]
     pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
-        let entity = self.entities.inc();
-        components.attach_to_entity(self, entity);
-        entity
+        components.attach_to(self, self.entities.inc())
     }
 
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
@@ -107,7 +104,7 @@ impl World {
     /// Attach multiple components to an entity at once.
     #[track_caller]
     pub fn attach<C: AttachComponents>(&self, entity: Entity, components: C) {
-        components.attach_to_entity(self, entity);
+        components.attach_to(self, entity);
     }
 
     /// Detach a component and return it if the entity had that component.
@@ -255,3 +252,33 @@ impl World {
         self.scheduler.run(self);
     }
 }
+pub trait AttachComponents {
+    fn attach_to(self, world: &World, entity: Entity) -> Entity;
+}
+
+macro_rules! impl_attach_components {
+    ($($T:ident),+) => {
+        impl<$($T: Any),+> AttachComponents for ($($T,)+) {
+            #[track_caller]
+            fn attach_to(self, world: &World, entity: Entity) -> Entity {
+                #[allow(non_snake_case)]
+                let ($($T,)+) = self;
+                $(world.insert(entity, $T);)+
+                entity
+            }
+        }
+    };
+}
+
+impl_attach_components!(A);
+impl_attach_components!(A, B);
+impl_attach_components!(A, B, C);
+impl_attach_components!(A, B, C, D);
+impl_attach_components!(A, B, C, D, E);
+impl_attach_components!(A, B, C, D, E, F);
+impl_attach_components!(A, B, C, D, E, F, G);
+impl_attach_components!(A, B, C, D, E, F, G, H);
+impl_attach_components!(A, B, C, D, E, F, G, H, I);
+impl_attach_components!(A, B, C, D, E, F, G, H, I, J);
+impl_attach_components!(A, B, C, D, E, F, G, H, I, J, K);
+impl_attach_components!(A, B, C, D, E, F, G, H, I, J, K, L);
