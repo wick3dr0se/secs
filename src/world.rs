@@ -34,27 +34,32 @@ impl From<u64> for Entity {
     }
 }
 
+struct EntityCounter(Cell<NonZeroU64>);
+
+impl EntityCounter {
+    fn inc(&self) -> Entity {
+        let entity = self.0.get();
+        self.0.set(entity.checked_add(1).unwrap());
+        Entity(entity)
+    }
+}
+
+impl Default for EntityCounter {
+    fn default() -> Self {
+        Self(Cell::new(NonZeroU64::MIN))
+    }
+}
+
 /// The main entry point to this [crate].
 ///
 /// Invoke [Self::spawn] to add entities and [Self::query] to process them.
+#[derive(Default)]
 pub struct World {
-    entities: Cell<NonZeroU64>,
+    entities: EntityCounter,
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     dead_entities: RefCell<BTreeMap<Entity, (&'static Location<'static>, String)>>,
     pub(crate) sparse_sets: SparseSets,
     scheduler: Scheduler,
-}
-
-impl Default for World {
-    fn default() -> Self {
-        Self {
-            entities: Cell::new(NonZeroU64::MIN),
-            #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-            dead_entities: Default::default(),
-            sparse_sets: Default::default(),
-            scheduler: Default::default(),
-        }
-    }
 }
 
 impl World {
@@ -84,9 +89,7 @@ impl World {
     /// ```
     #[track_caller]
     pub fn spawn<C: AttachComponents>(&self, components: C) -> Entity {
-        let entity = self.entities.get();
-        self.entities.set(entity.checked_add(1).unwrap());
-        let entity = Entity(entity);
+        let entity = self.entities.inc();
         components.attach_to_entity(self, entity);
         entity
     }
