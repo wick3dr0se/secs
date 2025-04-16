@@ -1,6 +1,6 @@
 use std::{cell::Cell, panic::AssertUnwindSafe, rc::Rc};
 
-use secs::{SysId, World};
+use secs::{Scheduler, SysId, World};
 
 #[test]
 fn remove() {
@@ -84,4 +84,23 @@ fn mut_system() {
     for _ in 0..3 {
         world.run_systems();
     }
+}
+
+#[test]
+fn scheduler_resource() {
+    let world = World::default();
+
+    let mut state = 5_u32;
+
+    let scheduler = Scheduler::default();
+
+    scheduler.register(|_world, state| {
+        *state += 1;
+        assert!(*state <= 8);
+    });
+
+    for _ in 0..3 {
+        scheduler.run(&world, &mut state);
+    }
+    assert_eq!(state, 8);
 }
