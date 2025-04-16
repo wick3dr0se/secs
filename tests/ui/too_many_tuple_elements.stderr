@@ -1,4 +1,4 @@
-error[E0277]: `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 18:19}` is not a valid query
+error[E0277]: `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 42:19}` is not a valid query
    --> tests/ui/too_many_tuple_elements.rs:7:9
     |
 6   |       world.query(
@@ -8,11 +8,11 @@ error[E0277]: `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 18:19}` is not 
 9   | |          _: &u32,
 10  | |          _: &i32,
 ...   |
-17  | |          _: &u128,
-18  | |          _: &i128| {},
+41  | |          _: &u128,
+42  | |          _: &i128| {},
     | |_____________________^
     |
-    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 18:19}`
+    = help: the trait `secs::query::Query<_>` is not implemented for closure `{closure@tests/ui/too_many_tuple_elements.rs:7:9: 42:19}`
     = note: only tuples with 1 or up to 5 elements can be used as queries
 note: required by a bound in `World::query`
    --> $DIR/src/world.rs
