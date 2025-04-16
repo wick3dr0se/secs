@@ -12,7 +12,7 @@ use std::{
 
 use crate::{
     query::Query,
-    scheduler::{Scheduler, SysId, SystemFn},
+    scheduler::{Scheduler, SysId},
     sparse_set::{RemoveType, SparseSets},
 };
 
@@ -58,7 +58,7 @@ pub struct World {
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     dead_entities: RefCell<BTreeMap<Entity, (&'static Location<'static>, String)>>,
     pub(crate) sparse_sets: SparseSets,
-    scheduler: Scheduler,
+    scheduler: Scheduler<()>,
 }
 
 impl World {
@@ -235,12 +235,11 @@ impl World {
     }
 
     /// Add a system that will run after all systems that were added before it.
-    pub fn add_system(&self, system: impl SystemFn) -> SysId {
-        self.scheduler.register(system)
+    pub fn add_system(&self, mut system: impl FnMut(&World) + 'static) -> SysId {
+        self.scheduler.register(move |world, _| system(world))
     }
 
-    /// Remove a system. Note that due to how compilers work this may not
-    /// work if the system is declared in another crate.
+    /// Remove a previously inserted system.
     pub fn remove_system(&self, system: SysId) {
         self.scheduler.deregister(system);
     }
@@ -249,7 +248,7 @@ impl World {
     ///
     /// Note: it is not recommended to run this from within a system, as that will usually result in infinite recursion.
     pub fn run_systems(&self) {
-        self.scheduler.run(self);
+        self.scheduler.run(self, &mut ());
     }
 }
 pub trait AttachComponents {
