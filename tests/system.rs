@@ -92,10 +92,13 @@ fn scheduler_resource() {
 
     let mut state = 5_u32;
 
+    let immut_resource = "foo".to_string();
+
     let scheduler = Scheduler::default();
 
     scheduler.register(|_world, state| {
         *state += 1;
+        assert_eq!(immut_resource, "foo");
         assert!(*state <= 8);
     });
 
