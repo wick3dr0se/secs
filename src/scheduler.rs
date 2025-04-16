@@ -7,26 +7,24 @@ use std::cell::{Cell, RefCell};
 #[derive(Copy, Clone)]
 pub struct SysId(u64);
 
-pub trait SystemFn: FnMut(&World) + 'static {}
-
-impl<T: FnMut(&World) + 'static> SystemFn for T {}
-
-pub type System = (SysId, Option<Box<dyn SystemFn>>);
+pub type System<RES> = (SysId, Option<Box<dyn FnMut(&World, &mut RES) + 'static>>);
 
 #[derive(Default)]
-pub struct Scheduler {
+pub struct Scheduler<RES> {
     next_id: Cell<u64>,
-    systems: RefCell<Vec<System>>,
+    systems: RefCell<Vec<System<RES>>>,
 }
 
-impl Scheduler {
-    pub fn register(&self, system: impl SystemFn) -> SysId {
+impl<RES> Scheduler<RES> {
+    /// Add a system that will run after all systems that were added before it.
+    pub fn register(&self, system: impl FnMut(&World, &mut RES) + 'static) -> SysId {
         let id = SysId(self.next_id.get());
         self.next_id.set(id.0 + 1);
         self.systems.borrow_mut().push((id, Some(Box::new(system))));
         id
     }
 
+    /// Remove a previously inserted system. Will silently do nothing if the system was already removed.
     pub fn deregister(&self, system: SysId) {
         let position = self
             .systems
@@ -38,7 +36,8 @@ impl Scheduler {
         }
     }
 
-    pub fn run(&self, world: &World) {
+    /// Run all systems once.
+    pub fn run(&self, world: &World, res: &mut RES) {
         let len = self.systems.borrow().len();
         for i in 0..len {
             let mut guard = self.systems.borrow_mut();
@@ -47,7 +46,7 @@ impl Scheduler {
             };
             let mut sys = sys.take().unwrap();
             drop(guard);
-            sys(world);
+            sys(world, res);
             let mut guard = self.systems.borrow_mut();
             let Some((_, entry)) = guard.get_mut(i) else {
                 break;
