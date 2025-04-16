@@ -7,14 +7,14 @@ use std::cell::{Cell, RefCell};
 #[derive(Copy, Clone)]
 pub struct SysId(u64);
 
-pub type System<RES> = (SysId, Option<Box<dyn FnMut(&World, &mut RES) + 'static>>);
+pub type System<'a, RES> = (SysId, Option<Box<dyn FnMut(&World, &mut RES) + 'a>>);
 
-pub struct Scheduler<RES> {
+pub struct Scheduler<'a, RES> {
     next_id: Cell<u64>,
-    systems: RefCell<Vec<System<RES>>>,
+    systems: RefCell<Vec<System<'a, RES>>>,
 }
 
-impl<RES> Default for Scheduler<RES> {
+impl<RES> Default for Scheduler<'_, RES> {
     fn default() -> Self {
         Self {
             next_id: Default::default(),
@@ -23,9 +23,9 @@ impl<RES> Default for Scheduler<RES> {
     }
 }
 
-impl<RES> Scheduler<RES> {
+impl<'a, RES> Scheduler<'a, RES> {
     /// Add a system that will run after all systems that were added before it.
-    pub fn register(&self, system: impl FnMut(&World, &mut RES) + 'static) -> SysId {
+    pub fn register(&self, system: impl FnMut(&World, &mut RES) + 'a) -> SysId {
         let id = SysId(self.next_id.get());
         self.next_id.set(id.0 + 1);
         self.systems.borrow_mut().push((id, Some(Box::new(system))));

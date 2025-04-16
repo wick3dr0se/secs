@@ -58,7 +58,7 @@ pub struct World {
     #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
     dead_entities: RefCell<BTreeMap<Entity, (&'static Location<'static>, String)>>,
     pub(crate) sparse_sets: SparseSets,
-    scheduler: Scheduler<()>,
+    scheduler: Scheduler<'static, ()>,
 }
 
 impl World {
