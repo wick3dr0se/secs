@@ -9,10 +9,18 @@ pub struct SysId(u64);
 
 pub type System<RES> = (SysId, Option<Box<dyn FnMut(&World, &mut RES) + 'static>>);
 
-#[derive(Default)]
 pub struct Scheduler<RES> {
     next_id: Cell<u64>,
     systems: RefCell<Vec<System<RES>>>,
+}
+
+impl<RES> Default for Scheduler<RES> {
+    fn default() -> Self {
+        Self {
+            next_id: Default::default(),
+            systems: Default::default(),
+        }
+    }
 }
 
 impl<RES> Scheduler<RES> {

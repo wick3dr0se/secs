@@ -1,10 +1,8 @@
 use macroquad::{prelude::*, rand, ui::root_ui};
 use secs::World;
-use std::cell::Cell;
-use std::rc::Rc;
 
 struct GameState {
-    paused: Cell<bool>,
+    paused: bool,
 }
 
 struct Position {
@@ -38,36 +36,34 @@ enum Shape {
     Circle,
 }
 
-fn move_system(game_state: Rc<GameState>) -> impl Fn(&World) {
-    move |world| {
-        if game_state.paused.get() {
-            return;
+fn move_system(world: &World, game_state: &mut GameState) {
+    if game_state.paused {
+        return;
+    }
+
+    world.query(|_entity, pos: &mut Position, vel: &mut Velocity| {
+        vel.x = 0.;
+        vel.y = 0.;
+
+        if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
+            vel.x = 2.;
+        }
+        if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
+            vel.x = -2.;
+        }
+        if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
+            vel.y = 2.;
+        }
+        if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
+            vel.y = -2.;
         }
 
-        world.query(|_entity, pos: &mut Position, vel: &mut Velocity| {
-            vel.x = 0.;
-            vel.y = 0.;
-
-            if is_key_down(KeyCode::Right) || is_key_down(KeyCode::D) {
-                vel.x = 2.;
-            }
-            if is_key_down(KeyCode::Left) || is_key_down(KeyCode::A) {
-                vel.x = -2.;
-            }
-            if is_key_down(KeyCode::Down) || is_key_down(KeyCode::S) {
-                vel.y = 2.;
-            }
-            if is_key_down(KeyCode::Up) || is_key_down(KeyCode::W) {
-                vel.y = -2.;
-            }
-
-            pos.x += vel.x;
-            pos.y += vel.y;
-        });
-    }
+        pos.x += vel.x;
+        pos.y += vel.y;
+    });
 }
 
-fn collision_system(world: &World) {
+fn collision_system(world: &World, _: &mut GameState) {
     world.query(
         |_, player_center: &Position, player: &mut Sprite, player_score: &mut Score| {
             world.query(|_, powerup_center: &Position, powerup: &mut Powerup| {
@@ -93,46 +89,44 @@ fn collision_system(world: &World) {
     )
 }
 
-fn render_system(game_state: Rc<GameState>) -> impl Fn(&World) {
-    move |world| {
-        if game_state.paused.get() {
-            let text = "PAUSED";
-            let font_size = 100.;
-            let text_width = measure_text(text, None, font_size as u16, 1.).width;
-            let (x, y) = ((screen_width() - text_width) / 2., screen_height() / 2.);
+fn render_system(world: &World, game_state: &mut GameState) {
+    if game_state.paused {
+        let text = "PAUSED";
+        let font_size = 100.;
+        let text_width = measure_text(text, None, font_size as u16, 1.).width;
+        let (x, y) = ((screen_width() - text_width) / 2., screen_height() / 2.);
 
-            draw_text(text, x, y, font_size, RED);
+        draw_text(text, x, y, font_size, RED);
 
-            return;
-        }
-
-        world.query(|_, pos: &Position, sprite: &Sprite| match sprite.shape {
-            Shape::Square => draw_rectangle(
-                pos.x - (sprite.width * 0.5),
-                pos.y - (sprite.width * 0.5),
-                sprite.width,
-                sprite.height,
-                ORANGE,
-            ),
-            Shape::Circle => draw_circle(pos.x, pos.y, sprite.width * 0.5, PURPLE),
-        });
-
-        world.query(|_, powerup: &Powerup, pos: &Position| {
-            if powerup.active {
-                draw_rectangle(
-                    pos.x - (powerup.width * 0.5),
-                    pos.y - (powerup.width * 0.5),
-                    powerup.width,
-                    powerup.height,
-                    RED,
-                );
-            }
-        });
-
-        world.query(|_, score: &Score| {
-            root_ui().label(None, &format!("Player Score: {}", score.value));
-        });
+        return;
     }
+
+    world.query(|_, pos: &Position, sprite: &Sprite| match sprite.shape {
+        Shape::Square => draw_rectangle(
+            pos.x - (sprite.width * 0.5),
+            pos.y - (sprite.width * 0.5),
+            sprite.width,
+            sprite.height,
+            ORANGE,
+        ),
+        Shape::Circle => draw_circle(pos.x, pos.y, sprite.width * 0.5, PURPLE),
+    });
+
+    world.query(|_, powerup: &Powerup, pos: &Position| {
+        if powerup.active {
+            draw_rectangle(
+                pos.x - (powerup.width * 0.5),
+                pos.y - (powerup.width * 0.5),
+                powerup.width,
+                powerup.height,
+                RED,
+            );
+        }
+    });
+
+    world.query(|_, score: &Score| {
+        root_ui().label(None, &format!("Player Score: {}", score.value));
+    });
 }
 
 #[macroquad::main("secs_macroquad")]
@@ -164,24 +158,24 @@ async fn main() {
         ));
     }
 
-    let game_state = Rc::new(GameState {
-        paused: Cell::new(false),
-    });
+    let scheduler = secs::Scheduler::default();
 
-    world.add_system(move_system(game_state.clone()));
-    world.add_system(collision_system);
+    let mut game_state = GameState { paused: false };
 
-    world.add_system(render_system(game_state.clone()));
+    scheduler.register(move_system);
+    scheduler.register(collision_system);
+
+    scheduler.register(render_system);
 
     loop {
         clear_background(SKYBLUE);
 
         if is_key_pressed(KeyCode::P) {
-            game_state.paused.set(!game_state.paused.get());
+            game_state.paused = !game_state.paused;
         }
 
         // run all parallel and sequential systems
-        world.run_systems();
+        scheduler.run(&world, &mut game_state);
 
         next_frame().await;
     }
