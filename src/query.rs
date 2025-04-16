@@ -92,115 +92,35 @@ impl<C: 'static> SparseSetGetter for &mut C {
     }
 }
 
-impl<T: SparseSetGetter + Always, F> Query<(T,)> for F
+macro_rules! impl_query {
+    ($($T:ident),*) => {
+        impl<A: SparseSetGetter + Always, $($T: SparseSetGetter,)* Z> Query<(A, $($T,)*)> for Z
 where
-    F: FnMut(Entity, T::Short<'_>) + FnMut(Entity, T),
-{
-    #[track_caller]
-    fn get_components(world: &World, mut f: F) {
-        if let Some(mut s1) = T::get_set(world) {
-            for (entity, c1) in T::iter(&mut s1) {
-                f(entity, c1);
-            }
-        }
-    }
-}
+    Z: FnMut(Entity, A::Short<'_>, $($T::Short<'_>,)*) + FnMut(Entity, A, $($T,)*),{
+            #[track_caller]
+            fn get_components(world: &World, mut f: Z) {
+                #[allow(non_snake_case)]
+                if let (Some(mut a), $(Some(mut $T),)*) = (A::get_set(world), $($T::get_set(world),)*) {
+                    for (entity, a) in A::iter(&mut a) {
+                        $(let Some($T) = $T::get_entity(&mut $T, entity) else { continue };)*
+                        f(entity, a, $($T,)*);
 
-impl<T: SparseSetGetter + Always, U: SparseSetGetter, F> Query<(T, U)> for F
-where
-    F: FnMut(Entity, T::Short<'_>, U::Short<'_>) + FnMut(Entity, T, U),
-{
-    #[track_caller]
-    fn get_components(world: &World, mut f: F) {
-        if let (Some(mut s1), Some(mut s2)) = (T::get_set(world), U::get_set(world)) {
-            for (entity, c1) in T::iter(&mut s1) {
-                if let Some(c2) = U::get_entity(&mut s2, entity) {
-                    f(entity, c1, c2);
-                }
-            }
-        }
-    }
-}
-
-impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, F> Query<(T, U, V)> for F
-where
-    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>) + FnMut(Entity, T, U, V),
-{
-    #[track_caller]
-    fn get_components(world: &World, mut f: F) {
-        if let (Some(mut s1), Some(mut s2), Some(mut s3)) =
-            (T::get_set(world), U::get_set(world), V::get_set(world))
-        {
-            for (entity, c1) in T::iter(&mut s1) {
-                if let Some(c2) = U::get_entity(&mut s2, entity) {
-                    if let Some(c3) = V::get_entity(&mut s3, entity) {
-                        f(entity, c1, c2, c3);
                     }
                 }
             }
         }
-    }
+    };
 }
 
-impl<T: SparseSetGetter + Always, U: SparseSetGetter, V: SparseSetGetter, W: SparseSetGetter, F>
-    Query<(T, U, V, W)> for F
-where
-    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>, W::Short<'_>)
-        + FnMut(Entity, T, U, V, W),
-{
-    #[track_caller]
-    fn get_components(world: &World, mut f: F) {
-        if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4)) = (
-            T::get_set(world),
-            U::get_set(world),
-            V::get_set(world),
-            W::get_set(world),
-        ) {
-            for (entity, c1) in T::iter(&mut s1) {
-                if let Some(c2) = U::get_entity(&mut s2, entity) {
-                    if let Some(c3) = V::get_entity(&mut s3, entity) {
-                        if let Some(c4) = W::get_entity(&mut s4, entity) {
-                            f(entity, c1, c2, c3, c4);
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
-
-impl<
-    T: SparseSetGetter + Always,
-    U: SparseSetGetter,
-    V: SparseSetGetter,
-    W: SparseSetGetter,
-    X: SparseSetGetter,
-    F,
-> Query<(T, U, V, W, X)> for F
-where
-    F: FnMut(Entity, T::Short<'_>, U::Short<'_>, V::Short<'_>, W::Short<'_>, X::Short<'_>)
-        + FnMut(Entity, T, U, V, W, X),
-{
-    #[track_caller]
-    fn get_components(world: &World, mut f: F) {
-        if let (Some(mut s1), Some(mut s2), Some(mut s3), Some(mut s4), Some(mut s5)) = (
-            T::get_set(world),
-            U::get_set(world),
-            V::get_set(world),
-            W::get_set(world),
-            X::get_set(world),
-        ) {
-            for (entity, c1) in T::iter(&mut s1) {
-                if let Some(c2) = U::get_entity(&mut s2, entity) {
-                    if let Some(c3) = V::get_entity(&mut s3, entity) {
-                        if let Some(c4) = W::get_entity(&mut s4, entity) {
-                            if let Some(c5) = X::get_entity(&mut s5, entity) {
-                                f(entity, c1, c2, c3, c4, c5);
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-}
+impl_query!();
+impl_query!(B);
+impl_query!(B, C);
+impl_query!(B, C, D);
+impl_query!(B, C, D, E);
+impl_query!(B, C, D, E, F);
+impl_query!(B, C, D, E, F, G);
+impl_query!(B, C, D, E, F, G, H);
+impl_query!(B, C, D, E, F, G, H, I);
+impl_query!(B, C, D, E, F, G, H, I, J);
+impl_query!(B, C, D, E, F, G, H, I, J, K);
+impl_query!(B, C, D, E, F, G, H, I, J, K, L);
