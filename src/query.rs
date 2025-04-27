@@ -95,8 +95,10 @@ impl<C: 'static> SparseSetGetter for &mut C {
 macro_rules! impl_query {
     ($($T:ident),*) => {
         impl<A: SparseSetGetter + Always, $($T: SparseSetGetter,)* Z> Query<(A, $($T,)*)> for Z
-where
-    Z: FnMut(Entity, A::Short<'_>, $($T::Short<'_>,)*) + FnMut(Entity, A, $($T,)*),{
+        where
+            Z: FnMut(Entity, A::Short<'_>, $($T::Short<'_>,)*),
+            Z: FnMut(Entity, A, $($T,)*),
+        {
             #[track_caller]
             fn get_components(world: &World, mut f: Z) {
                 #[allow(non_snake_case)]
