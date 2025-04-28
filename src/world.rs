@@ -13,7 +13,7 @@ use std::{
 use crate::{
     query::Query,
     scheduler::{Scheduler, SysId},
-    sparse_set::{RemoveType, SparseSets},
+    sparse_set::SparseSets,
 };
 
 /// An opaque id for an entity.
@@ -94,11 +94,13 @@ impl World {
     /// Destroy an entity and all its components. Future attempts to use this entity in any way will panic.
     #[track_caller]
     pub fn despawn(&self, entity: Entity) {
-        let _detach_info = self.detach_all(entity);
+        #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
+        let detach_info = self.debug_components(entity);
+        self.detach_all(entity);
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         self.dead_entities
             .borrow_mut()
-            .insert(entity, (Location::caller(), _detach_info));
+            .insert(entity, (Location::caller(), detach_info));
     }
 
     /// Attach multiple components to an entity at once.
@@ -124,7 +126,7 @@ impl World {
     /// Detach all components from an entity and drop them.
     /// If you want to extract specific components, call [Self::detach] first.
     #[track_caller]
-    pub fn detach_all(&self, entity: Entity) -> RemoveType {
+    pub fn detach_all(&self, entity: Entity) {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some((loc, components)) = self.dead_entities.borrow().get(&entity) {
             panic!(
@@ -132,6 +134,13 @@ impl World {
             );
         }
         self.sparse_sets.remove(entity)
+    }
+
+    /// Detach all components from an entity and drop them.
+    /// If you want to extract specific components, call [Self::detach] first.
+    #[track_caller]
+    pub fn debug_components(&self, entity: Entity) -> String {
+        self.sparse_sets.debug(entity)
     }
 
     /// Detach all components of a specific type from all entities and drop them.

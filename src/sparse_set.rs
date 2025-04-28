@@ -74,20 +74,16 @@ impl<C> SparseSet<C> {
 }
 
 trait Set: Any {
-    #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-    fn remove(&mut self, entity: Entity) -> Option<&'static str>;
+    fn debug(&mut self, entity: Entity) -> Option<&'static str>;
 
-    #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
     fn remove(&mut self, entity: Entity);
 }
 
 impl<C: Any> Set for SparseSet<C> {
-    #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-    fn remove(&mut self, entity: Entity) -> Option<&'static str> {
-        self.remove(entity).map(|_| type_name::<C>())
+    fn debug(&mut self, entity: Entity) -> Option<&'static str> {
+        self.get(entity).map(|_| type_name::<C>())
     }
 
-    #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
     fn remove(&mut self, entity: Entity) {
         self.remove(entity);
     }
@@ -98,12 +94,6 @@ pub struct SparseSets {
     set_access: RefCell<HashMap<TypeId, usize>>,
     sets: FrozenVec<Box<RefCell<dyn Set>>>,
 }
-
-#[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-pub(crate) type RemoveType = String;
-
-#[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
-pub(crate) type RemoveType = ();
 
 impl SparseSets {
     pub fn insert<C: Any>(&self, entity: Entity, component: C) {
@@ -117,7 +107,7 @@ impl SparseSets {
     }
 
     #[track_caller]
-    pub fn remove(&self, entity: Entity) -> RemoveType {
+    pub fn debug(&self, entity: Entity) -> String {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         let mut component = String::new();
 
@@ -129,7 +119,7 @@ impl SparseSets {
             };
 
             #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-            if let Some(c) = guard.remove(entity) {
+            if let Some(c) = guard.debug(entity) {
                 component.push_str(c);
                 component.push_str(", ");
             }
@@ -138,6 +128,19 @@ impl SparseSets {
         }
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         component
+    }
+
+    #[track_caller]
+    pub fn remove(&self, entity: Entity) {
+        for set in self.sets.iter() {
+            let Ok(mut guard) = set.try_borrow_mut() else {
+                panic!(
+                    "Tried to access component mutably, but it is already being read or written to",
+                )
+            };
+
+            guard.remove(entity);
+        }
     }
 
     #[track_caller]
