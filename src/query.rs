@@ -104,6 +104,9 @@ macro_rules! impl_query {
                 #[allow(non_snake_case)]
                 if let (Some(mut a), $(Some(mut $T),)*) = (A::get_set(world), $($T::get_set(world),)*) {
                     for (entity, a) in A::iter(&mut a) {
+                        if world.is_despawning(entity) {
+                            continue;
+                        }
                         $(let Some($T) = $T::get_entity(&mut $T, entity) else { continue };)*
                         f(entity, a, $($T,)*);
 

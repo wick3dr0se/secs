@@ -59,6 +59,16 @@ fn attach_to_despawned() {
 
     let entity = world.spawn((1_u32,));
     world.despawn(entity);
+    world.flush_despawned();
+    world.attach(entity, (String::new(),));
+}
+
+#[test]
+fn attach_to_despawned_no_flush() {
+    let world = World::default();
+
+    let entity = world.spawn((1_u32,));
+    world.despawn(entity);
     world.attach(entity, (String::new(),));
 }
 
