@@ -55,6 +55,7 @@ impl<'a, RES> Scheduler<'a, RES> {
             let mut sys = sys.take().unwrap();
             drop(guard);
             sys(world, res);
+            world.flush_despawned();
             let mut guard = self.systems.borrow_mut();
             let Some((_, entry)) = guard.get_mut(i) else {
                 break;

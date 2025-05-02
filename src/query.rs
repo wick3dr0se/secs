@@ -95,13 +95,18 @@ impl<C: 'static> SparseSetGetter for &mut C {
 macro_rules! impl_query {
     ($($T:ident),*) => {
         impl<A: SparseSetGetter + Always, $($T: SparseSetGetter,)* Z> Query<(A, $($T,)*)> for Z
-where
-    Z: FnMut(Entity, A::Short<'_>, $($T::Short<'_>,)*) + FnMut(Entity, A, $($T,)*),{
+        where
+            Z: FnMut(Entity, A::Short<'_>, $($T::Short<'_>,)*),
+            Z: FnMut(Entity, A, $($T,)*),
+        {
             #[track_caller]
             fn get_components(world: &World, mut f: Z) {
                 #[allow(non_snake_case)]
                 if let (Some(mut a), $(Some(mut $T),)*) = (A::get_set(world), $($T::get_set(world),)*) {
                     for (entity, a) in A::iter(&mut a) {
+                        if world.is_despawning(entity) {
+                            continue;
+                        }
                         $(let Some($T) = $T::get_entity(&mut $T, entity) else { continue };)*
                         f(entity, a, $($T,)*);
 

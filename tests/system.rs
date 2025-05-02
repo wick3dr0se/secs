@@ -44,6 +44,27 @@ fn despawn() {
 }
 
 #[test]
+fn despawn_in_query() {
+    let world = World::default();
+
+    let id = world.spawn((1_u32,));
+    world.spawn((10_u32, "foo"));
+    world.despawn(id);
+
+    let mut results = vec![];
+    world.query(|entity, i: &u32, s: Option<&&'static str>| {
+        results.push((*i, s.map(|s| *s)));
+        world.despawn(entity);
+    });
+    assert_eq!(&results[..], &[(10, Some("foo"))]);
+    let mut results = vec![];
+    world.query(|_, i: &u32, s: Option<&&'static str>| {
+        results.push((*i, s.map(|s| *s)));
+    });
+    assert_eq!(&results[..], &[]);
+}
+
+#[test]
 fn get() {
     let world = World::default();
 
