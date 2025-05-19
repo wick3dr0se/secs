@@ -126,7 +126,9 @@ impl SparseSets {
             guard.remove(entity);
         }
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
-        component
+        return component;
+        #[cfg(not(any(debug_assertions, feature = "track_dead_entities")))]
+        return String::new();
     }
 
     #[track_caller]
