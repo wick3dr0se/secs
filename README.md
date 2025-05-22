@@ -12,13 +12,14 @@ You could use something like **hecs**, **specs** or **bevy** for your ECS needs,
 - **Entity Management**: Entities are ID's, right?
 - **Component Storage**: Components are stored in sparse sets — sounds fancy but archetypes were too much work
 - **Multiple Mutable Queries**: You can mutate many components, probably..
-- **Systems**: **secs** has systems with parallel potential
+- **Scheduling**: **secs** has a minimal scheduler that stays out of your way. Need more control? Run systems manually.
+- **Resources**: Resources can easily be passed around to any (scheduled) system
 
 ## Getting Started
 Get **secs**
 
 ```bash
-cargo add --git https://github.com/wick3dr0se/secs
+cargo add secs
 ```
 
 Example: How it’s probably supposed to work
@@ -26,11 +27,11 @@ Example: How it’s probably supposed to work
 use secs::World;
 
 let mut world = World::default();
-world.spawn((MyComponent { /* your data */ },));
+world.spawn((Component1 { /* your data */ }, Component2));
 
-for (entity, (component,)) in world.query::<(&MyComponent,)>() {
-    // maybe get an immutable component
-}
+world.query(|entity, c1: &Component1, c2: &mut Component2| {
+    // maybe get mixed mutability components
+})
 ```
 
 See more examples in [examples/](examples/)
