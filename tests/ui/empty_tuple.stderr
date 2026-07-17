@@ -1,7 +1,7 @@
 error[E0277]: `{closure@tests/ui/empty_tuple.rs:6:17: 6:24}` is not a valid query
    --> tests/ui/empty_tuple.rs:6:17
     |
-6   |     world.query(|_, ()| {});
+  6 |     world.query(|_, ()| {});
     |           ----- ^^^^^^^^^^
     |           |
     |           required by a bound introduced by this call

@@ -14,7 +14,6 @@ fn main() -> ui_test::Result<()> {
     config.path_stderr_filter(&Path::new(file!()).parent().unwrap(), "$DIR");
     config.stderr_filter("(src/.*\\.rs):[0-9]+:[0-9]+", "$1");
     config.stderr_filter("[0-9][0-9][0-9] \\|", "LLL |");
-    config.stderr_filter("[0-9][0-9] \\|", "LL |");
-    config.stderr_filter("[0-9] \\|", "L |");
+    config.stderr_filter("thread 'main' \\([0-9]+\\) panicked", "thread 'main' panicked");
     ui_test::run_tests(config)
 }
