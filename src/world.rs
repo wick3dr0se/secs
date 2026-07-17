@@ -201,7 +201,7 @@ impl World {
     ///
     /// This will panic if the component is already used mutably either by a [Self::query] or [Self::get_mut].
     #[track_caller]
-    pub fn get<C: 'static>(&self, entity: Entity) -> Option<Ref<C>> {
+    pub fn get<C: 'static>(&self, entity: Entity) -> Option<Ref<'_, C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some(components) = self.dead_entity_components.borrow().get(&entity) {
             let loc = self.dead_entity_locations.borrow()[&entity];
@@ -220,7 +220,7 @@ impl World {
     ///
     /// This will panic if the component is already used either by a [Self::query], [Self::get_mut], or [Self::get].
     #[track_caller]
-    pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<RefMut<C>> {
+    pub fn get_mut<C: 'static>(&self, entity: Entity) -> Option<RefMut<'_, C>> {
         #[cfg(any(debug_assertions, feature = "track_dead_entities"))]
         if let Some(components) = self.dead_entity_components.borrow().get(&entity) {
             let loc = self.dead_entity_locations.borrow()[&entity];

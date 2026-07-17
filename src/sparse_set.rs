@@ -145,7 +145,7 @@ impl SparseSets {
     }
 
     #[track_caller]
-    pub fn get<C: 'static>(&self) -> Option<Ref<SparseSet<C>>> {
+    pub fn get<C: 'static>(&self) -> Option<Ref<'_, SparseSet<C>>> {
         let i = *self.set_access.borrow().get(&TypeId::of::<C>())?;
         let set = &self.sets.get(i).unwrap();
         let Ok(guard) = set.try_borrow() else {
@@ -160,7 +160,7 @@ impl SparseSets {
     }
 
     #[track_caller]
-    pub fn get_mut<C: 'static>(&self) -> Option<RefMut<SparseSet<C>>> {
+    pub fn get_mut<C: 'static>(&self) -> Option<RefMut<'_, SparseSet<C>>> {
         let i = *self.set_access.borrow().get(&TypeId::of::<C>())?;
         let set = &self.sets.get(i).unwrap();
         let Ok(guard) = set.try_borrow_mut() else {
