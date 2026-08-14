@@ -3,6 +3,9 @@
 //! Start by creating a [World] and invoke methods on it
 //! to fill your world with life.
 
+#![feature(splat)]
+#![allow(incomplete_features)]
+
 mod query;
 mod scheduler;
 mod sparse_set;

@@ -7,8 +7,8 @@ use secs::World;
 fn aliasing_mutation() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32,));
+    world.spawn(1_u32);
+    world.spawn(10_u32);
 
     // 💥 in miri with stacked borrows
     world.query(|_, a: &mut u32, b: &mut u32| {
@@ -22,8 +22,8 @@ fn aliasing_mutation() {
 fn optional_components() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     let mut results = vec![];
     world.query(|_, i: &u32, s: Option<&&'static str>| results.push((*i, s.map(|s| *s))));
     results.sort();

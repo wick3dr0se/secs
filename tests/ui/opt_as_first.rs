@@ -3,8 +3,8 @@ use secs::World;
 fn optional_components() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     let mut results = vec![];
     world.query(|_, i: &u32, s: Option<&&str>| results.push((*i, s.map(|s| *s))));
     results.sort();

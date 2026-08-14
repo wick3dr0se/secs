@@ -27,7 +27,7 @@ Example: How it’s probably supposed to work
 use secs::World;
 
 let mut world = World::default();
-world.spawn((Component1 { /* your data */ }, Component2));
+world.spawn(Component1 { /* your data */ }, Component2);
 
 world.query(|entity, c1: &Component1, c2: &mut Component2| {
     // maybe get mixed mutability components

@@ -34,8 +34,8 @@ fn remove_within() {
 fn despawn() {
     let world = World::default();
 
-    let id = world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    let id = world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.despawn(id);
 
     let mut results = vec![];
@@ -47,8 +47,8 @@ fn despawn() {
 fn despawn_in_query() {
     let world = World::default();
 
-    let id = world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    let id = world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.despawn(id);
 
     let mut results = vec![];
@@ -68,8 +68,8 @@ fn despawn_in_query() {
 fn get() {
     let world = World::default();
 
-    let id = world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    let id = world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.despawn(id);
 
     let mut results = vec![];
@@ -82,8 +82,8 @@ fn get() {
 fn get_fail() {
     let world = World::default();
 
-    let id = world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    let id = world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.despawn(id);
 
     let mut results = vec![];

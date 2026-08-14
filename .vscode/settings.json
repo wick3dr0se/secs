@@ -1,0 +1,5 @@
+{
+    "rust-analyzer.diagnostics.disabled": [
+        "unlinked-file"
+    ]
+}

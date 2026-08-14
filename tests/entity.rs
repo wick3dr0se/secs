@@ -4,7 +4,7 @@ use secs::World;
 fn check_component_attached() {
     let world = World::default();
 
-    let entity = world.spawn((1_u32,));
+    let entity = world.spawn(1_u32);
 
     assert!(world.is_attached::<u32>(entity));
 
@@ -19,8 +19,8 @@ fn check_component_attached() {
 fn detach_related_in_query() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.query(|entity, _: &u32| {
         world.detach::<u32>(entity);
     });
@@ -30,8 +30,8 @@ fn detach_related_in_query() {
 fn detach_unrelated_in_query() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.query(|entity, _: &u32| {
         world.detach::<&str>(entity);
     });
@@ -44,10 +44,10 @@ fn detach_unrelated_in_query() {
 fn spawn_related_in_query() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.query(|_, &i: &u32| {
-        world.spawn((i * 2,));
+        world.spawn(i * 2);
     });
 }
 
@@ -57,36 +57,36 @@ fn spawn_related_in_query() {
 fn attach_to_despawned() {
     let world = World::default();
 
-    let entity = world.spawn((1_u32,));
+    let entity = world.spawn(1_u32);
     world.despawn(entity);
     world.flush_despawned();
-    world.attach(entity, (String::new(),));
+    world.attach(entity, String::new());
 }
 
 #[test]
 fn attach_to_despawned_no_flush() {
     let world = World::default();
 
-    let entity = world.spawn((1_u32,));
+    let entity = world.spawn(1_u32);
     world.despawn(entity);
-    world.attach(entity, (String::new(),));
+    world.attach(entity, String::new());
 }
 
 #[test]
 fn spawn_unrelated_in_query() {
     let world = World::default();
 
-    world.spawn((1_u32,));
-    world.spawn((10_u32, "foo"));
+    world.spawn(1_u32);
+    world.spawn(10_u32, "foo");
     world.query(|_, _: &u32| {
-        world.spawn(("bar",));
+        world.spawn("bar");
     });
 }
 
 #[test]
 fn detach() {
     let world = World::default();
-    let entity = world.spawn((String::new(),));
+    let entity = world.spawn(String::new());
     world.detach::<String>(entity).unwrap();
     assert_eq!(None, world.detach::<String>(entity));
 }
@@ -94,7 +94,7 @@ fn detach() {
 #[test]
 fn detach_any() {
     let world = World::default();
-    let entity = world.spawn((1_u32, "foo"));
+    let entity = world.spawn(1_u32, "foo");
 
     world.detach_any::<u32>();
 
